@@ -1,0 +1,24 @@
+{
+  "name": "passkey-demo",
+  "version": "1.0.0",
+  "description": "Passkey authentication demo with cross-device support",
+  "private": true,
+  "scripts": {
+    "setup": "make setup",
+    "dev": "make dev",
+    "build": "make build",
+    "start": "make prod",
+    "docker:build": "make docker-build",
+    "docker:start": "make docker-prod",
+    "docker:stop": "make docker-prod-down",
+    "health": "make health",
+    "clean": "make clean"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

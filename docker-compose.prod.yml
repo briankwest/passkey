@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: passkey_demo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - passkey-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/passkey_demo
+      NODE_ENV: production
+      PORT: 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - passkey-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - passkey-network
+    restart: unless-stopped
+
+networks:
+  passkey-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

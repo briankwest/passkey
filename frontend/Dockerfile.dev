@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Use npm install for development
+RUN npm install
+
+# Copy all source files
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
