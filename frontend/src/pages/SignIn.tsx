@@ -4,14 +4,13 @@ import { useAuth } from '../hooks/useAuth';
 import QRCode from 'qrcode';
 import api from '../services/api';
 import { ErrorAlert } from '../components/ErrorAlert';
-import { getErrorMessage, isPasskeyNotFoundError, isSessionExpiredError } from '../utils/errorMessages';
+import { getErrorMessage, isPasskeyNotFoundError } from '../utils/errorMessages';
 
 export const SignIn: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showQR, setShowQR] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [sessionId, setSessionId] = useState('');
   const [qrError, setQrError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -37,7 +36,6 @@ export const SignIn: React.FC = () => {
       setQrError('');
       // Generate a session ID for cross-device authentication
       const newSessionId = crypto.randomUUID();
-      setSessionId(newSessionId);
       
       // Create session on backend
       await api.post('/auth/cross-device/create', { sessionId: newSessionId });

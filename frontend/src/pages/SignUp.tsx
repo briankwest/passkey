@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { DeviceCheck } from '../components/DeviceCheck';
-import { getErrorMessage, isDeviceNotSupportedError } from '../utils/errorMessages';
+import { getErrorMessage } from '../utils/errorMessages';
 
 export const SignUp: React.FC = () => {
   const [loading, setLoading] = useState(false);

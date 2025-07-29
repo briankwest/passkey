@@ -22,7 +22,7 @@ export class WebAuthnService {
       try {
         const url = new URL(origin);
         // For ngrok domains, use the ngrok subdomain
-        if (url.hostname.includes('ngrok.io') || url.hostname.includes('ngrok-free.app')) {
+        if (url.hostname.includes('ngrok.io') || url.hostname.includes('ngrok.app')) {
           return url.hostname;
         }
       } catch (e) {

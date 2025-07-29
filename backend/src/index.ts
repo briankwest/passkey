@@ -20,7 +20,7 @@ app.use(cors({
     if (origin === config.webauthn.origin) return callback(null, true);
     
     // Allow ngrok domains for development
-    if (origin.includes('ngrok.io') || origin.includes('ngrok-free.app')) {
+    if (origin.includes('ngrok.io') || origin.includes('ngrok.app')) {
       return callback(null, true);
     }
     
