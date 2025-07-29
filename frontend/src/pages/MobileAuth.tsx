@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useSearchParams } from 'react-router-dom';
+import { startAuthentication } from '@simplewebauthn/browser';
 import api from '../services/api';
 
 export const MobileAuth: React.FC = () => {
@@ -8,8 +8,6 @@ export const MobileAuth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
-  const { login } = useAuth();
 
   // Get the session ID from URL params
   const sessionId = searchParams.get('session');
@@ -32,18 +30,33 @@ export const MobileAuth: React.FC = () => {
     setError('');
     
     try {
-      // First authenticate with passkey
-      await login();
+      // Get authentication options
+      const { data: options } = await api.post('/auth/authenticate/options');
       
-      // Then complete the cross-device session
-      await api.post('/auth/cross-device/complete', { sessionId });
+      // Start WebAuthn authentication
+      const credential = await startAuthentication(options);
       
-      setSuccess(true);
+      // Verify with server but don't store the token
+      const { data } = await api.post('/auth/authenticate/verify', { credential });
       
-      // Show success for a moment before redirecting
-      setTimeout(() => {
-        navigate('/profile');
-      }, 2000);
+      // Complete the cross-device session with the authenticated user
+      if (data.token) {
+        // Temporarily set the token for the complete request
+        const originalToken = localStorage.getItem('token');
+        localStorage.setItem('token', data.token);
+        
+        try {
+          await api.post('/auth/cross-device/complete', { sessionId });
+          setSuccess(true);
+        } finally {
+          // Restore original token state (remove the temporary token)
+          if (originalToken) {
+            localStorage.setItem('token', originalToken);
+          } else {
+            localStorage.removeItem('token');
+          }
+        }
+      }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {
@@ -55,9 +68,9 @@ export const MobileAuth: React.FC = () => {
     return (
       <div className="auth-container">
         <h1>✅ Authentication Successful!</h1>
-        <p>You can now return to your desktop browser.</p>
-        <p className="text-center" style={{ marginTop: '20px' }}>
-          Redirecting to profile...
+        <p>You have successfully authenticated on your desktop.</p>
+        <p className="text-center" style={{ marginTop: '20px', fontSize: '18px', fontWeight: 'bold' }}>
+          You can now close this window and return to your desktop browser.
         </p>
       </div>
     );

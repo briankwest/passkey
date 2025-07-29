@@ -70,7 +70,8 @@ export const SignIn: React.FC = () => {
           // Authentication successful
           localStorage.setItem('token', data.token);
           clearInterval(pollingInterval.current!);
-          navigate('/profile');
+          // Force a page reload to ensure auth context updates
+          window.location.href = '/profile';
         }
       } catch (err) {
         console.error('Polling error:', err);

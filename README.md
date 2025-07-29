@@ -228,21 +228,36 @@ make dev
 - **Windows**: Windows Hello or security key
 - **iOS/Android**: Device with biometric authentication
 
-## 📱 Mobile Testing
+## 📱 Mobile Testing with Ngrok
 
-To test on mobile devices:
+To test on mobile devices or external networks:
 
-1. Use ngrok for HTTPS tunnel:
+1. Start ngrok tunnel:
 ```bash
-make ngrok
+ngrok http 3000
 ```
 
-2. Update backend `.env`:
+2. Update **backend/.env** with your ngrok domain:
 ```env
-ALLOWED_ORIGINS=https://your-domain.ngrok.io
+RP_ID=your-subdomain.ngrok.app
+ORIGIN=https://your-subdomain.ngrok.app
+ALLOWED_ORIGINS=https://your-subdomain.ngrok.app,http://localhost:3000
 ```
 
-3. Access the ngrok URL on your mobile device
+3. Update **frontend/.env** with your ngrok domain:
+```env
+VITE_API_URL=http://localhost:5001
+VITE_ORIGIN=https://your-subdomain.ngrok.app
+```
+
+4. Restart both backend and frontend servers:
+```bash
+make restart
+```
+
+5. Access the ngrok URL on your mobile device
+
+**Note**: The RP_ID must match the domain you're accessing from. For ngrok, use the full subdomain.
 
 ## 🚀 Production Deployment
 
