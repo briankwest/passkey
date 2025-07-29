@@ -107,7 +107,7 @@ export const SignIn: React.FC = () => {
   return (
     <div className="auth-container">
       <h1>Sign In with Passkey</h1>
-      <p>Use your saved passkey to sign in securely.</p>
+      <p>Use your saved passkey, YubiKey, or other security key to sign in securely.</p>
       
       <ErrorAlert 
         error={error} 

@@ -38,7 +38,7 @@ export const SignUp: React.FC = () => {
   return (
     <div className="auth-container">
       <h1>Create Account with Passkey</h1>
-      <p>Use your device's biometric authentication or security key to create a secure account.</p>
+      <p>Use your device's biometric authentication, YubiKey, or other security key to create a secure account.</p>
       
       <DeviceCheck />
       
@@ -72,7 +72,7 @@ export const SignUp: React.FC = () => {
       </div>
       
       <div className="mt-3" style={{ fontSize: '14px', color: '#666' }}>
-        <strong>Note:</strong> This demo uses passkeys for authentication. Make sure your device supports WebAuthn and has biometric authentication or a security key set up.
+        <strong>Note:</strong> This demo uses passkeys for authentication. Make sure your device supports WebAuthn and has biometric authentication, YubiKey, or other FIDO2 security key set up.
       </div>
     </div>
   );

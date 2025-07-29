@@ -51,7 +51,6 @@ export class WebAuthnService {
       attestationType: 'none',
       excludeCredentials: [],
       authenticatorSelection: {
-        authenticatorAttachment: 'platform',
         requireResidentKey: true,
         residentKey: 'required',
         userVerification: 'required'
