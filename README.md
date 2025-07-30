@@ -1,16 +1,36 @@
-# Passkey Authentication Demo
+# Passkey Authentication
 
-A complete passwordless authentication demo using WebAuthn/Passkeys with cross-device authentication support.
+A complete passwordless authentication system using WebAuthn/Passkeys with cross-device authentication support.
 
 ## 🚀 Features
 
-- **🔐 Passwordless Authentication** - No passwords, only passkeys using WebAuthn
+### Core Authentication
+- **🔐 Passwordless Authentication** - Primary authentication using WebAuthn/Passkeys
+- **🔑 Optional Password Support** - Email/password registration and login available
+- **📱 Two-Factor Authentication (2FA)** - TOTP support with backup codes
+- **🔄 Password Reset Flow** - Secure password reset via email tokens
+- **✉️ Email Verification** - Required email verification for new accounts
+
+### Security Features
+- **🛡️ Multiple Passkeys** - Support for multiple passkeys per account
+- **💾 Backup Codes** - 8 single-use recovery codes for 2FA
+- **🔒 Account Security** - Password history tracking, strength validation
+- **📊 Security Activity Log** - Track authentication methods and devices
+- **🚫 Account Lockout** - Automatic lockout after failed attempts
+
+### User Experience
 - **📱 Cross-Device Authentication** - QR code support for mobile device authentication
-- **👤 User Profile Management** - Complete profile after passkey registration
-- **🐳 Docker Support** - Full containerization for all services
-- **🔒 Secure Sessions** - JWT-based authentication with secure session management
-- **🎨 Modern UI** - Clean, responsive interface with error handling
-- **⚠️ Smart Error Handling** - User-friendly error messages and device compatibility checks
+- **👤 User Profile Management** - First name, last name, display name, bio
+- **🎨 Modern UI** - Clean, responsive interface with loading states
+- **⚠️ Smart Error Handling** - User-friendly error messages and retry options
+- **📧 Email Notifications** - Welcome emails, verification, password reset
+
+### Developer Features
+- **🐳 Docker Support** - Full containerization with development and production configs
+- **🪝 Custom React Hooks** - Reusable hooks for API calls, loading states, errors
+- **🛠️ Error Middleware** - Centralized error handling with custom error classes
+- **📝 TypeScript** - Full type safety across frontend and backend
+- **🔄 Hot Reload** - Development environment with automatic reloading
 
 ## 📋 Requirements
 
@@ -25,8 +45,8 @@ A complete passwordless authentication demo using WebAuthn/Passkeys with cross-d
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd passkey-demo
+git clone https://github.com/briankwest/passkey.git
+cd passkey
 
 # Start everything with Docker
 make dev
@@ -65,15 +85,32 @@ npm run dev
 ## 🎯 Usage Guide
 
 ### Creating an Account
+
+#### Option 1: Passkey Only (Recommended)
 1. Visit http://localhost:3000
-2. Click "Create Account with Passkey"
-3. Your browser will prompt for biometric authentication or security key
-4. After successful registration, complete your profile
+2. Click "Create Account"
+3. Choose "Passkey" option
+4. Enter your email, first name, and last name
+5. Your browser will prompt for biometric authentication or security key
+6. Check your email to verify your account
+
+#### Option 2: Email/Password
+1. Choose "Email & Password" option
+2. Enter your details and a strong password (12+ characters)
+3. Password strength indicator will guide you
+4. Verify your email before signing in
 
 ### Signing In
-1. Click "Sign In" from the home page
+
+#### With Passkey
+1. Click "Sign In" and choose "Passkey"
 2. Use your registered passkey when prompted
-3. For cross-device authentication, click "Use another device" to show QR code
+3. For cross-device authentication, scan the QR code
+
+#### With Email/Password
+1. Choose "Email & Password" option
+2. Enter your credentials
+3. Complete 2FA if enabled (TOTP code or backup code)
 
 ### Cross-Device Authentication
 1. On desktop, click "Use another device" during sign-in
@@ -117,39 +154,105 @@ make ngrok        # Start ngrok tunnel for external testing
 
 ### Project Structure
 ```
-passkey-demo/
+passkey/
 ├── frontend/                 # React frontend application
 │   ├── src/
 │   │   ├── pages/           # Page components
+│   │   │   ├── SignIn.tsx   # Multi-method sign in
+│   │   │   ├── SignUp.tsx   # Multi-method registration
+│   │   │   ├── Profile.tsx  # User profile management
+│   │   │   └── SecuritySettings.tsx  # Security management
 │   │   ├── components/      # Reusable UI components
 │   │   ├── services/        # API service layer
 │   │   ├── hooks/           # Custom React hooks
+│   │   │   ├── useAuth.tsx  # Authentication context
+│   │   │   ├── useApiCall.ts # API call management
+│   │   │   └── useLoading.ts # Loading state management
 │   │   └── utils/           # Utility functions
-│   └── Dockerfile.dev       # Frontend Docker config
+│   └── Dockerfile           # Production Docker config
 ├── backend/                  # Express backend API
 │   ├── src/
 │   │   ├── controllers/     # Request handlers
+│   │   │   ├── auth.controller.ts  # Auth endpoints
+│   │   │   ├── user.controller.ts  # User endpoints
+│   │   │   └── passkey.controller.ts # Passkey management
 │   │   ├── services/        # Business logic
+│   │   │   ├── webauthn.service.ts # WebAuthn implementation
+│   │   │   ├── password.service.ts # Password management
+│   │   │   ├── totp.service.ts     # 2FA implementation
+│   │   │   └── email.service.ts    # Email notifications
+│   │   ├── middleware/      # Express middleware
+│   │   │   └── errorHandler.ts # Global error handling
+│   │   ├── email-templates/ # Email templates (HTML/TXT)
 │   │   ├── routes/          # API routes
-│   │   ├── db/              # Database config & migrations
+│   │   ├── db/              # Database config
+│   │   ├── utils/           # Utility functions
+│   │   │   ├── jwt.ts       # JWT token generation
+│   │   │   └── getClientIp.ts # IP address extraction
 │   │   └── types/           # TypeScript types
-│   └── Dockerfile.dev       # Backend Docker config
-├── docker-compose.yml        # Docker services configuration
-└── Makefile                 # Build and deployment commands
+│   └── Dockerfile           # Production Docker config
+├── database/                 # Database files
+│   └── schema.sql           # Database schema
+├── docker-compose.yml        # Development Docker config
+├── docker-compose.prod.yml   # Production Docker config
+├── Makefile                 # Build and deployment commands
+└── README.md                # This file
 ```
 
 ### API Endpoints
 
+#### Authentication
 ```
+# Passkey Authentication
 POST   /api/auth/registration/options     # Get registration options
 POST   /api/auth/registration/verify      # Verify registration
 POST   /api/auth/authentication/options   # Get authentication options
 POST   /api/auth/authentication/verify    # Verify authentication
+
+# Email/Password Authentication
+POST   /api/auth/register                 # Register with email/password
+POST   /api/auth/register/passkey         # Register with passkey (no password)
+POST   /api/auth/login                    # Login with email/password
+GET    /api/auth/check-email             # Check email availability
 POST   /api/auth/logout                   # Logout user
 
-GET    /api/user/profile                  # Get user profile
-PUT    /api/user/profile                  # Update user profile
+# Email Verification
+GET    /api/auth/verify-email/:token      # Verify email address
+POST   /api/auth/resend-verification      # Resend verification email
+POST   /api/auth/send-verification        # Send verification after passkey registration
 
+# Password Management
+POST   /api/auth/forgot-password          # Request password reset
+POST   /api/auth/reset-password           # Reset password with token
+POST   /api/auth/change-password          # Change password (authenticated)
+POST   /api/auth/check-password-strength  # Check password strength
+
+# Two-Factor Authentication
+POST   /api/auth/totp/setup               # Setup TOTP
+POST   /api/auth/totp/verify              # Verify TOTP setup
+POST   /api/auth/totp/disable             # Disable TOTP
+GET    /api/auth/totp/status              # Get TOTP status
+GET    /api/auth/backup-codes             # Get backup codes status
+POST   /api/auth/backup-codes/regenerate  # Regenerate backup codes
+
+# Security
+GET    /api/auth/recent-activity          # Get recent auth activity
+```
+
+#### User Management
+```
+GET    /api/user/profile                  # Get user profile  
+PUT    /api/user/profile                  # Update user profile
+```
+
+#### Passkey Management
+```
+GET    /api/passkeys                      # List user's passkeys
+DELETE /api/passkeys/:id                  # Delete a passkey
+```
+
+#### Cross-Device Authentication
+```
 POST   /api/auth/cross-device/create      # Create cross-device session
 GET    /api/auth/cross-device/check/:id   # Check session status
 POST   /api/auth/cross-device/complete    # Complete cross-device auth
@@ -157,31 +260,64 @@ POST   /api/auth/cross-device/complete    # Complete cross-device auth
 
 ## 🔒 Security Features
 
-- **No Passwords**: Only passkeys are supported for authentication
+### Authentication Security
+- **Passkey-First Design**: Primary authentication via WebAuthn/FIDO2
 - **Physical Security Keys**: Full support for YubiKey and other FIDO2 security keys
 - **Flexible PIN Policy**: Configurable PIN requirements for security keys
 - **Challenge-Response**: Every authentication uses a unique challenge
-- **Secure Storage**: Credentials are stored encrypted in the database
-- **Session Security**: JWT tokens with 7-day expiration
-- **CORS Protection**: Configured for local development
-- **Input Validation**: All inputs are validated and sanitized
+- **Password Security**: 
+  - Bcrypt hashing with 12 rounds
+  - Strength validation using zxcvbn
+  - Password history tracking (last 10)
+  - Minimum 12 characters required
+
+### Account Protection
+- **Two-Factor Authentication**: TOTP with authenticator apps
+- **Backup Codes**: 8 single-use recovery codes (format: XXXXX-XXXXX)
+- **Account Lockout**: Progressive lockout after failed attempts (30-60 minutes)
+- **Email Verification**: Required for all new accounts
+- **Password Reset**: Secure token-based reset (1-hour expiration)
+
+### Session & Data Security
+- **JWT Tokens**: Secure session management with 7-day expiration
+- **Secure Storage**: All sensitive data encrypted in PostgreSQL
+- **CORS Protection**: Configurable for production environments
+- **Input Validation**: All inputs validated and sanitized
+- **Rate Limiting**: Protection against brute force attacks
+- **IP Tracking**: Real client IP logging with X-Forwarded-For support
 
 ## ⚙️ Configuration
 
 ### Environment Variables
 
+See [ENV_CONFIGURATION.md](./ENV_CONFIGURATION.md) for a complete list of all configuration options.
+
 Backend configuration (`.env`):
 ```env
 NODE_ENV=development
 PORT=5001
-DATABASE_URL=postgresql://postgres:password@localhost:5432/passkey_demo
+DATABASE_URL=postgresql://postgres:password@localhost:5432/passkey
+
+# Security
 JWT_SECRET=your-secret-key
 SESSION_SECRET=your-session-secret
+
+# WebAuthn Configuration
 RPID=localhost
-RP_NAME=Passkey Demo
+RP_NAME=Passkey
 ORIGIN=http://localhost:3000
 # User verification: 'required' (always require PIN), 'preferred' (optional PIN), 'discouraged' (no PIN)
 USER_VERIFICATION=preferred
+
+# Email Configuration (Optional - uses console if not set)
+MAILGUN_API_KEY=your-mailgun-api-key
+MAILGUN_DOMAIN=your-domain.mailgun.org
+EMAIL_FROM=noreply@your-domain.com
+```
+
+Frontend configuration (`.env`):
+```env
+VITE_API_URL=http://localhost:5001
 ```
 
 ### Port Configuration
@@ -239,6 +375,25 @@ make build
 make dev
 ```
 
+**TypeScript Build Errors**
+```bash
+# For frontend
+cd frontend && npm run type-check
+
+# For backend
+cd backend && npm run build
+```
+
+**Email Not Sending**
+- Without Mailgun configuration, emails are logged to console
+- Check backend logs to see email content
+- Configure Mailgun for production email delivery
+
+**2FA Issues**
+- Ensure system time is synchronized
+- Backup codes format: XXXXX-XXXXX (5 chars, hyphen, 5 chars)
+- Each backup code can only be used once
+
 ### Browser Requirements
 - Chrome 67+
 - Safari 14+
@@ -293,6 +448,17 @@ make build
 make prod
 ```
 
+### Production Build
+
+```bash
+# Build production Docker images
+make docker-prod
+
+# Or build individually
+docker build -f backend/Dockerfile -t passkey-backend .
+docker build -f frontend/Dockerfile -t passkey-frontend .
+```
+
 ### Environment Setup
 1. Set `NODE_ENV=production`
 2. Use strong JWT_SECRET and SESSION_SECRET
@@ -300,13 +466,35 @@ make prod
 4. Use HTTPS (required for WebAuthn)
 5. Set appropriate RP_ID for your domain
 
+## 📊 Recent Updates
+
+### Security Enhancements
+- Added Two-Factor Authentication (TOTP) with backup codes
+- Implemented password reset flow with email tokens
+- Added account lockout protection
+- Enhanced IP logging with X-Forwarded-For support
+
+### Code Quality Improvements
+- Centralized error handling with custom middleware
+- Created reusable React hooks for API calls
+- Extracted email templates with Mustache templating
+- Refactored large functions for better maintainability
+- Added TypeScript strict mode
+
+### User Experience
+- Added first/last name fields to user profile
+- Improved loading states and error messages
+- Enhanced security settings page
+- Added password strength indicator
+
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests (when available)
-5. Submit a pull request
+4. Ensure TypeScript builds pass
+5. Test all authentication flows
+6. Submit a pull request
 
 ## 📄 License
 

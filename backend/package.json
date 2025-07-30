@@ -1,7 +1,7 @@
 {
-  "name": "passkey-demo-backend",
+  "name": "passkey-backend",
   "version": "1.0.0",
-  "description": "Passkey authentication demo backend",
+  "description": "Passkey authentication backend",
   "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",

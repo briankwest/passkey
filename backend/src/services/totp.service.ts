@@ -12,7 +12,7 @@ interface BackupCode {
   hashedCode: string;
 }
 export class TOTPService {
-  private readonly appName = process.env.APP_NAME || 'Passkey Demo';
+  private readonly appName = process.env.APP_NAME || 'Passkey';
   private readonly backupCodeLength = 10;
   private readonly backupCodeCount = 8;
   async setupTOTP(userId: string, userEmail: string): Promise<TOTPSetup> {
