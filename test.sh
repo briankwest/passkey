@@ -312,7 +312,7 @@ RESET_RESPONSE=$(curl -s -X POST "$BASE_URL/api/auth/reset-password" \
   -H "Content-Type: application/json" \
   -d "{\"token\":\"$RESET_TOKEN\",\"password\":\"$RESET_PASSWORD\"}")
 
-if echo "$RESET_RESPONSE" | grep -q "Password reset successfully"; then
+if echo "$RESET_RESPONSE" | grep -q "success.*true"; then
     print_test "Password reset successful" 0
 else
     print_test "Password reset failed" 1 "$RESET_RESPONSE"
