@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface ErrorAlertProps {
-  error: string;
+  error: string | null;
   onRetry?: () => void;
   showRetry?: boolean;
 }

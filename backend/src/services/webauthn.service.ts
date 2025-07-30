@@ -32,7 +32,7 @@ export class WebAuthnService {
     return this.rpID;
   }
 
-  async generateRegistrationOptions(userId?: string, origin?: string) {
+  async generateRegistrationOptions(userId?: string, origin?: string, userData?: { email?: string; username?: string }) {
     const challenge = crypto.randomBytes(32).toString('base64url');
     const rpID = this.getRPID(origin);
     
@@ -42,18 +42,23 @@ export class WebAuthnService {
       [challenge, userId, 'registration', new Date(Date.now() + 60000 * 5)] // 5 min expiry
     );
 
+    // Generate a unique user ID for new registrations
+    const userIdBytes = userId ? Buffer.from(userId) : crypto.randomBytes(32);
+    const userName = userData?.email || userData?.username || `user_${Date.now()}`;
+    const userDisplayName = userData?.email || 'New User';
+
     const options = await generateRegistrationOptions({
       rpName: this.rpName,
       rpID: rpID,
-      userID: Buffer.from(userId || crypto.randomUUID()),
-      userName: `user_${Date.now()}`,
-      userDisplayName: 'New User',
+      userID: userIdBytes,
+      userName: userName,
+      userDisplayName: userDisplayName,
       attestationType: 'none',
       excludeCredentials: [],
       authenticatorSelection: {
         requireResidentKey: true,
         residentKey: 'required',
-        userVerification: 'required'
+        userVerification: config.webauthn.userVerification
       },
       supportedAlgorithmIDs: [-7, -257] // ES256, RS256
     });
@@ -66,18 +71,26 @@ export class WebAuthnService {
 
   async verifyRegistrationResponse(
     response: any,
-    challenge: string,
+    challengeFromController: string | null,
     origin?: string
   ): Promise<VerifiedRegistrationResponse & { userId?: string }> {
-    // Verify challenge exists and is valid
+    // Extract challenge from the credential response
+    // Handle both direct response and nested response formats
+    const responseData = response.response || response;
+    const clientDataJSON = JSON.parse(Buffer.from(responseData.clientDataJSON, 'base64').toString());
+    const challengeFromClient = clientDataJSON.challenge;
+    
+    // Verify challenge exists in database
     const challengeResult = await query(
-      'SELECT * FROM authentication_challenges WHERE challenge = $1 AND type = $2 AND expires_at > NOW()',
-      [challenge, 'registration']
+      'SELECT challenge, user_id FROM authentication_challenges WHERE challenge = $1 AND type = $2 AND expires_at > NOW()',
+      [challengeFromClient, 'registration']
     );
 
     if (challengeResult.rows.length === 0) {
       throw new Error('Invalid or expired challenge');
     }
+    
+    const challenge = challengeResult.rows[0].challenge;
 
     // For development, accept multiple origins
     const expectedOrigins = [this.origin];
@@ -136,7 +149,7 @@ export class WebAuthnService {
     const options = await generateAuthenticationOptions({
       rpID: rpID,
       allowCredentials,
-      userVerification: 'required'
+      userVerification: config.webauthn.userVerification
     });
 
     options.challenge = challenge;
@@ -146,9 +159,24 @@ export class WebAuthnService {
 
   async verifyAuthenticationResponse(
     response: any,
-    challenge: string,
+    challengeFromController: string | null,
     origin?: string
   ): Promise<VerifiedAuthenticationResponse & { userId: string }> {
+    // Extract challenge from the credential response
+    const clientDataJSON = JSON.parse(Buffer.from(response.response.clientDataJSON, 'base64').toString());
+    const challengeFromClient = clientDataJSON.challenge;
+    
+    // Verify challenge exists in database
+    const challengeResult = await query(
+      'SELECT challenge, user_id FROM authentication_challenges WHERE challenge = $1 AND type = $2 AND expires_at > NOW()',
+      [challengeFromClient, 'authentication']
+    );
+
+    if (challengeResult.rows.length === 0) {
+      throw new Error('Invalid or expired challenge');
+    }
+    
+    const challenge = challengeResult.rows[0].challenge;
     // Get stored credential
     const credentialId = response.id;
     
@@ -223,13 +251,30 @@ export class WebAuthnService {
     counter: number,
     transports?: string[],
     deviceType?: string,
-    authenticatorAttachment?: string
+    authenticatorAttachment?: string,
+    name?: string,
+    userAgent?: string,
+    ipAddress?: string
   ) {
-    await query(
-      `INSERT INTO passkeys 
-       (id, user_id, public_key, counter, transports, device_type, authenticator_attachment) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [credentialId, userId, publicKey, counter, transports, deviceType, authenticatorAttachment]
-    );
+    console.log('Saving credential to database:', {
+      credentialId,
+      userId,
+      name,
+      deviceType,
+      authenticatorAttachment
+    });
+    
+    try {
+      await query(
+        `INSERT INTO passkeys 
+         (id, user_id, public_key, counter, transports, device_type, authenticator_attachment, name, user_agent, ip_address) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [credentialId, userId, publicKey, counter, transports, deviceType, authenticatorAttachment, name, userAgent, ipAddress]
+      );
+      console.log('Credential saved successfully');
+    } catch (error) {
+      console.error('Error saving credential:', error);
+      throw error;
+    }
   }
 }

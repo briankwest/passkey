@@ -4,11 +4,11 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-RUN npm ci --only=production
+COPY backend/package*.json ./
+RUN npm install
 
 # Copy source files
-COPY . .
+COPY backend/ .
 RUN npm run build
 
 # Production stage
@@ -23,11 +23,16 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
-# Copy built application
+# Copy package files and install production dependencies
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+RUN npm install --production
+
+# Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/database ./database
+
+# Create database directory and copy schema
+RUN mkdir -p ./database
+COPY --chown=nodejs:nodejs database/schema.sql ./database/schema.sql
 
 # Switch to non-root user
 USER nodejs

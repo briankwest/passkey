@@ -17,13 +17,17 @@ export class CrossDeviceService {
     );
   }
 
-  async completeSession(sessionId: string, userId: string): Promise<void> {
+  async completeSession(sessionId: string, userId: string, token: string): Promise<void> {
     await query(
       `UPDATE authentication_challenges 
        SET user_id = $1 
        WHERE challenge = $2 AND type = 'cross-device'`,
       [userId, sessionId]
     );
+  }
+
+  async getSession(sessionId: string): Promise<{ authenticated: boolean; userId?: string; token?: string }> {
+    return this.checkSession(sessionId);
   }
 
   async checkSession(sessionId: string): Promise<{ authenticated: boolean; userId?: string }> {

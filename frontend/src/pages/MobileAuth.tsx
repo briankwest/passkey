@@ -31,22 +31,25 @@ export const MobileAuth: React.FC = () => {
     
     try {
       // Get authentication options
-      const { data: options } = await api.post('/auth/authenticate/options');
+      const { data: options } = await api.post('/auth/authentication/options');
       
       // Start WebAuthn authentication
       const credential = await startAuthentication(options);
       
       // Verify with server but don't store the token
-      const { data } = await api.post('/auth/authenticate/verify', { credential });
+      const { data } = await api.post('/auth/authentication/verify', { credential });
       
       // Complete the cross-device session with the authenticated user
-      if (data.token) {
+      if (data.token && data.user) {
         // Temporarily set the token for the complete request
         const originalToken = localStorage.getItem('token');
         localStorage.setItem('token', data.token);
         
         try {
-          await api.post('/auth/cross-device/complete', { sessionId });
+          await api.post('/auth/cross-device/complete', { 
+            sessionId,
+            userId: data.user.id 
+          });
           setSuccess(true);
         } finally {
           // Restore original token state (remove the temporary token)

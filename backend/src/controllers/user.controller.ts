@@ -25,7 +25,8 @@ export class UserController {
         display_name: user.display_name,
         avatar_url: user.avatar_url,
         bio: user.bio,
-        created_at: user.created_at
+        created_at: user.created_at,
+        has_password: !!user.password_hash
       });
     } catch (error) {
       console.error('Get profile error:', error);

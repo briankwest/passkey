@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import userService from '../services/user.service';
 import { ErrorAlert } from '../components/ErrorAlert';
@@ -6,6 +7,7 @@ import { getErrorMessage } from '../utils/errorMessages';
 
 export const Profile: React.FC = () => {
   const { user, logout, refreshUser } = useAuth();
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -101,9 +103,18 @@ export const Profile: React.FC = () => {
             <p>{user.bio || 'Not set'}</p>
           </div>
           
-          <button className="btn" onClick={() => setEditing(true)}>
-            Edit Profile
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn" onClick={() => setEditing(true)}>
+              Edit Profile
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => navigate('/security')}
+              style={{ width: 'auto' }}
+            >
+              Security Settings
+            </button>
+          </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} style={{ background: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)' }}>

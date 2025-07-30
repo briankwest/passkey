@@ -6,13 +6,13 @@ export class AuthService {
   async register(): Promise<AuthResponse> {
     try {
       // Get registration options from server
-      const { data: options } = await api.post('/auth/register/options');
+      const { data: options } = await api.post('/auth/registration/options');
       
       // Start WebAuthn registration
       const credential = await startRegistration(options);
       
       // Verify with server
-      const { data } = await api.post<AuthResponse>('/auth/register/verify', {
+      const { data } = await api.post<AuthResponse>('/auth/registration/verify', {
         credential
       });
       
@@ -33,13 +33,13 @@ export class AuthService {
   async authenticate(): Promise<AuthResponse> {
     try {
       // Get authentication options
-      const { data: options } = await api.post('/auth/authenticate/options');
+      const { data: options } = await api.post('/auth/authentication/options');
       
       // Start WebAuthn authentication
       const credential = await startAuthentication(options);
       
       // Verify with server
-      const { data } = await api.post<AuthResponse>('/auth/authenticate/verify', {
+      const { data } = await api.post<AuthResponse>('/auth/authentication/verify', {
         credential
       });
       

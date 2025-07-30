@@ -19,28 +19,23 @@ services:
 
   backend:
     build: 
-      context: ./backend
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: backend/Dockerfile.dev
     ports:
       - "5001:5001"
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/passkey_demo
-      SESSION_SECRET: dev-session-secret
-      JWT_SECRET: dev-jwt-secret
-      PORT: 5001
       NODE_ENV: development
-      RP_NAME: Passkey Demo
-      RP_ID: localhost
-      ORIGIN: http://localhost:3000
+      PORT: 5001
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - ./backend/src:/app/src
-      - ./backend/package.json:/app/package.json
-      - ./backend/tsconfig.json:/app/tsconfig.json
-      - ./backend/.env:/app/.env
-      - ./backend/database:/app/database
+      - ./backend:/app
+      - /app/node_modules
+      - ./database:/app/database
     networks:
       - passkey-network
     command: npm run dev
@@ -51,19 +46,15 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "3000:3000"
-    environment:
-      - VITE_API_URL=http://backend:5001
+    env_file:
+      - ./frontend/.env
     depends_on:
       - backend
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/index.html:/app/index.html
-      - ./frontend/package.json:/app/package.json
-      - ./frontend/vite.config.ts:/app/vite.config.ts
-      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend:/app
+      - /app/node_modules
     networks:
       - passkey-network
-    command: npm run dev
 
 networks:
   passkey-network:

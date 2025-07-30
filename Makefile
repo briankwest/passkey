@@ -32,29 +32,17 @@ help:
 	@echo "  make clean        - Clean build artifacts and dependencies"
 	@echo "  make test         - Run tests"
 
-# Install dependencies
-install: install-backend install-frontend
-	@echo "✅ All dependencies installed"
+# Install dependencies (builds containers)
+install: 
+	@echo "📦 Building Docker containers..."
+	@docker-compose build
+	@echo "✅ All containers built"
 
-install-backend:
-	@echo "📦 Installing backend dependencies..."
-	@cd backend && npm install
-
-install-frontend:
-	@echo "📦 Installing frontend dependencies..."
-	@cd frontend && npm install
-
-# Build for production
-build: build-backend build-frontend
+# Build for development 
+build: 
+	@echo "🔨 Building development Docker images..."
+	@docker-compose build
 	@echo "✅ Build complete"
-
-build-backend:
-	@echo "🔨 Building backend..."
-	@cd backend && npm run build
-
-build-frontend:
-	@echo "🔨 Building frontend..."
-	@cd frontend && npm run build
 
 # Docker and services management
 up: docker-up
@@ -74,24 +62,11 @@ docker-down:
 	@echo "🛑 Stopping Docker services..."
 	@docker-compose down
 
-start: docker-up start-backend start-frontend
-	@echo "✅ All services started in background"
+start: docker-up
+	@echo "✅ All services started in Docker"
 
-start-backend:
-	@echo "🚀 Starting backend..."
-	@cd backend && npm start > ../logs/backend.log 2>&1 &
-
-start-frontend:
-	@echo "🚀 Starting frontend..."
-	@cd frontend && npm run preview > ../logs/frontend.log 2>&1 &
-
-stop: stop-apps docker-down
+stop: docker-down
 	@echo "✅ All services stopped"
-
-stop-apps:
-	@echo "🛑 Stopping applications..."
-	@pkill -f "node.*backend" || true
-	@pkill -f "vite" || true
 
 restart: stop start
 	@echo "✅ Services restarted"
@@ -109,13 +84,13 @@ logs-frontend:
 # Database management
 db-migrate: wait-for-db
 	@echo "🗄️  Running database migrations..."
-	@cd backend && npm run db:migrate
+	@docker-compose run --rm backend node dist/db/migrate.js
 
 db-reset: docker-down docker-up wait-for-db
 	@echo "⚠️  Resetting database..."
 	@docker-compose exec -T postgres psql -U postgres -c "DROP DATABASE IF EXISTS passkey_demo;"
 	@docker-compose exec -T postgres psql -U postgres -c "CREATE DATABASE passkey_demo;"
-	@cd backend && npm run db:migrate
+	@docker-compose run --rm backend node dist/db/migrate.js
 	@echo "✅ Database reset complete"
 
 wait-for-db:
@@ -139,29 +114,17 @@ docker-dev: docker-down
 	@docker-compose up -d --build
 	@sleep 5
 	@make wait-for-db
-	@make db-migrate
+	@docker-compose exec backend npm run build
+	@docker-compose exec -T postgres psql -U postgres -c "DROP DATABASE IF EXISTS passkey_demo;"
+	@docker-compose exec -T postgres psql -U postgres -c "CREATE DATABASE passkey_demo;"
+	@docker-compose exec backend node dist/db/migrate.js
 	@make health
 
-dev-local: docker-up
-	@echo "🔧 Starting in local development mode (no Docker for apps)..."
-	@mkdir -p logs
-	@make -j2 dev-backend-local dev-frontend-local
-
-dev-backend-local: wait-for-db db-migrate
-	@echo "🔧 Starting backend locally..."
-	@cd backend && npm run dev
-
-dev-frontend-local:
-	@echo "🔧 Starting frontend locally..."
-	@cd frontend && npm run dev
+# Removed dev-local targets - all development uses Docker
 
 # Production mode
-prod: check-env build docker-up wait-for-db db-migrate
-	@echo "🚀 Starting in production mode..."
-	@mkdir -p logs
-	@make start-backend start-frontend
+prod: check-env docker-prod
 	@echo "✅ Production services started"
-	@echo "View logs: make logs"
 
 check-env:
 	@if [ ! -f backend/.env ]; then \
@@ -180,12 +143,10 @@ clean:
 	@echo "✅ Clean complete"
 
 # Testing
-test: test-backend
+test: 
+	@echo "🧪 Running tests in Docker..."
+	@docker-compose run --rm backend npm test || echo "No tests configured yet"
 	@echo "✅ All tests passed"
-
-test-backend:
-	@echo "🧪 Running backend tests..."
-	@cd backend && npm test || echo "No tests configured yet"
 
 # Create necessary directories
 init-dirs:

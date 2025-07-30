@@ -6,6 +6,7 @@ import { pool } from './db';
 import { config } from './config';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
+import passkeyRoutes from './routes/passkey.routes';
 
 const app = express();
 const PgSession = connectPgSession(session);
@@ -35,6 +36,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Trust proxy for secure cookies
+app.set('trust proxy', 1);
+
 // Session setup
 app.use(session({
   store: new PgSession({
@@ -43,18 +47,20 @@ app.use(session({
   }),
   secret: config.session.secret,
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // Changed to true to ensure session is created
   cookie: {
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     httpOnly: true,
-    secure: config.nodeEnv === 'production',
-    sameSite: 'lax'
+    secure: true, // Always true for https
+    sameSite: 'none' // Required for cross-origin
+    // Removed domain restriction to allow any domain
   }
 }));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/passkeys', passkeyRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

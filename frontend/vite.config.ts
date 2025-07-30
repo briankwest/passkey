@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    allowedHosts: ['.ngrok.io', '.ngrok.app', 'localhost'],
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'http://backend:5001',

@@ -16,7 +16,7 @@ A complete passwordless authentication demo using WebAuthn/Passkeys with cross-d
 
 - Docker and Docker Compose
 - Modern browser with WebAuthn support (Chrome, Safari, Firefox, Edge)
-- Device with biometric authentication (Touch ID, Face ID, Windows Hello) or security key
+- Device with biometric authentication (Touch ID, Face ID, Windows Hello) or security key (YubiKey, etc.)
 - For development: Node.js 20+ (if running without Docker)
 
 ## 🏃 Quick Start
@@ -158,6 +158,8 @@ POST   /api/auth/cross-device/complete    # Complete cross-device auth
 ## 🔒 Security Features
 
 - **No Passwords**: Only passkeys are supported for authentication
+- **Physical Security Keys**: Full support for YubiKey and other FIDO2 security keys
+- **Flexible PIN Policy**: Configurable PIN requirements for security keys
 - **Challenge-Response**: Every authentication uses a unique challenge
 - **Secure Storage**: Credentials are stored encrypted in the database
 - **Session Security**: JWT tokens with 7-day expiration
@@ -178,12 +180,32 @@ SESSION_SECRET=your-session-secret
 RPID=localhost
 RP_NAME=Passkey Demo
 ORIGIN=http://localhost:3000
+# User verification: 'required' (always require PIN), 'preferred' (optional PIN), 'discouraged' (no PIN)
+USER_VERIFICATION=preferred
 ```
 
 ### Port Configuration
 - **Frontend**: 3000
 - **Backend**: 5001 (changed from 5000 to avoid macOS AirPlay conflict)
 - **PostgreSQL**: 5432
+
+### YubiKey/Security Key Configuration
+
+The `USER_VERIFICATION` environment variable controls PIN requirements:
+
+- **`required`**: Always require PIN/biometric verification
+  - Most secure option
+  - May require setting up a PIN on the security key first
+  
+- **`preferred`** (default): Use PIN/biometric if available
+  - Balances security and usability
+  - Works with keys that have PIN and those without
+  
+- **`discouraged`**: Don't prompt for PIN/biometric
+  - Least secure but most convenient
+  - Suitable for low-risk environments
+
+**Note**: Some security keys always require PIN regardless of this setting if they've been configured with one.
 
 ## 🐛 Troubleshooting
 
@@ -224,9 +246,9 @@ make dev
 - Edge 18+
 
 ### Device Requirements
-- **macOS**: Touch ID or connected security key
-- **Windows**: Windows Hello or security key
-- **iOS/Android**: Device with biometric authentication
+- **macOS**: Touch ID or connected security key (YubiKey via USB/NFC)
+- **Windows**: Windows Hello or security key (YubiKey via USB/NFC)
+- **iOS/Android**: Device with biometric authentication or NFC YubiKey support
 
 ## 📱 Mobile Testing with Ngrok
 

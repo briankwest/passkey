@@ -6,30 +6,53 @@ import api from '../services/api';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { getErrorMessage, isPasskeyNotFoundError } from '../utils/errorMessages';
 
+type LoginMethod = 'choice' | 'passkey' | 'email' | 'qr';
+
 export const SignIn: React.FC = () => {
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('choice');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showQR, setShowQR] = useState(false);
+  const [browserSupported, setBrowserSupported] = useState(true);
+  
+  // Email login state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
+  const [showTOTP, setShowTOTP] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [totpAttempts, setTotpAttempts] = useState(0);
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  
+  // QR Code state
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [qrError, setQrError] = useState('');
+  const pollingInterval = useRef<NodeJS.Timeout>();
+  
   const navigate = useNavigate();
   const { login } = useAuth();
-  const pollingInterval = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    // Check if this is a mobile device
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (!isMobile && showQR) {
-      generateQRCode();
+    // Check if browser supports WebAuthn
+    if (!window.PublicKeyCredential) {
+      setBrowserSupported(false);
     }
-    
-    // Cleanup polling on unmount
+  }, []);
+
+  useEffect(() => {
+    // Cleanup polling on unmount or method change
     return () => {
       if (pollingInterval.current) {
         clearInterval(pollingInterval.current);
       }
     };
-  }, [showQR]);
+  }, [loginMethod]);
+
+  useEffect(() => {
+    if (loginMethod === 'qr') {
+      generateQRCode();
+    }
+  }, [loginMethod]);
 
   const generateQRCode = async () => {
     try {
@@ -79,7 +102,7 @@ export const SignIn: React.FC = () => {
     }, 2000); // Poll every 2 seconds
   };
 
-  const handleAuthenticate = async () => {
+  const handlePasskeyLogin = async () => {
     setLoading(true);
     setError('');
     
@@ -104,61 +127,332 @@ export const SignIn: React.FC = () => {
     }
   };
 
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setNeedsEmailVerification(false);
+
+    try {
+      const response = await api.post('/auth/login', {
+        email,
+        password,
+        totpCode: showTOTP ? totpCode : undefined
+      });
+
+      if (response.data.token) {
+        // Login successful (with or without TOTP)
+        localStorage.setItem('token', response.data.token);
+        navigate('/profile');
+      } else if (response.data.requiresTOTP) {
+        // TOTP required, show the input
+        setShowTOTP(true);
+        setError('');
+        setTotpAttempts(0); // Reset attempts counter
+        setUseBackupCode(false); // Reset backup code mode
+        setLoading(false);
+        return;
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      const errorData = err.response?.data;
+      
+      if (errorData?.error === 'email_not_verified') {
+        setNeedsEmailVerification(true);
+        setError('Please verify your email before logging in.');
+      } else if (errorData?.error === 'totp_required') {
+        setShowTOTP(true);
+        setError('Please enter your 2FA code');
+      } else if (errorData?.error === 'Invalid 2FA code' && showTOTP) {
+        // Handle invalid TOTP code
+        const newAttempts = totpAttempts + 1;
+        setTotpAttempts(newAttempts);
+        
+        if (newAttempts >= 3) {
+          // Reset after 3 attempts
+          setShowTOTP(false);
+          setTotpCode('');
+          setTotpAttempts(0);
+          setUseBackupCode(false);
+          setError('Too many failed attempts. Please sign in again.');
+        } else {
+          setError(`Invalid 2FA code. ${3 - newAttempts} attempts remaining.`);
+          setTotpCode(''); // Clear the code for retry
+        }
+      } else {
+        setError(errorData?.error || 'Login failed');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setLoading(true);
+    try {
+      await api.post('/auth/resend-verification', { email });
+      setError('');
+      alert('Verification email sent! Please check your inbox.');
+    } catch (err) {
+      setError('Failed to resend verification email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loginMethod === 'choice') {
+    return (
+      <div className="auth-container">
+        <h1>Welcome Back</h1>
+        <p>Choose how you'd like to sign in</p>
+
+        <div className="login-options">
+          <button
+            className="option-card"
+            onClick={() => setLoginMethod('passkey')}
+            disabled={!browserSupported}
+          >
+            <div className="option-icon">🔐</div>
+            <h3>Passkey</h3>
+            <p>Sign in with biometrics or security key</p>
+            {!browserSupported && (
+              <span className="badge">Not supported</span>
+            )}
+          </button>
+
+          <button
+            className="option-card"
+            onClick={() => setLoginMethod('email')}
+          >
+            <div className="option-icon">📧</div>
+            <h3>Email & Password</h3>
+            <p>Traditional email and password login</p>
+          </button>
+
+          <button
+            className="option-card"
+            onClick={() => setLoginMethod('qr')}
+          >
+            <div className="option-icon">📱</div>
+            <h3>Mobile Device</h3>
+            <p>Scan QR code with your phone</p>
+          </button>
+        </div>
+
+        <div className="text-center mt-3">
+          Don't have an account? <Link to="/signup" className="link">Create Account</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loginMethod === 'passkey') {
+    return (
+      <div className="auth-container">
+        <button 
+          className="back-button"
+          onClick={() => setLoginMethod('choice')}
+        >
+          ← Back
+        </button>
+
+        <h1>Sign In with Passkey</h1>
+        <p>Use your saved passkey, YubiKey, or other security key</p>
+        
+        <ErrorAlert 
+          error={error} 
+          onRetry={handlePasskeyLogin}
+          showRetry={!loading}
+        />
+        
+        <button 
+          className="btn" 
+          onClick={handlePasskeyLogin}
+          disabled={loading}
+        >
+          {loading ? <span className="loading"></span> : 'Sign In with Passkey'}
+        </button>
+
+        <div className="alternative-methods">
+          <p>Having trouble?</p>
+          <button 
+            className="link-button"
+            onClick={() => setLoginMethod('email')}
+          >
+            Sign in with email instead
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loginMethod === 'qr') {
+    return (
+      <div className="auth-container">
+        <button 
+          className="back-button"
+          onClick={() => {
+            setLoginMethod('choice');
+            if (pollingInterval.current) {
+              clearInterval(pollingInterval.current);
+            }
+          }}
+        >
+          ← Back
+        </button>
+
+        <h1>Sign In with Mobile Device</h1>
+        <p>Scan this QR code with your authenticated mobile device</p>
+
+        {qrError ? (
+          <ErrorAlert error={qrError} onRetry={generateQRCode} showRetry={true} />
+        ) : qrCodeUrl ? (
+          <>
+            <div className="qr-code">
+              <img src={qrCodeUrl} alt="QR Code for mobile authentication" />
+            </div>
+            <div className="info-alert" style={{ marginTop: '10px' }}>
+              <svg className="info-icon" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <span>Waiting for authentication...</span>
+            </div>
+          </>
+        ) : (
+          <div className="loading"></div>
+        )}
+        
+        <p style={{ fontSize: '14px', color: '#666', textAlign: 'center', marginTop: '20px' }}>
+          Make sure you're already signed in on your mobile device
+        </p>
+      </div>
+    );
+  }
+
+  // Email & Password Login
   return (
     <div className="auth-container">
-      <h1>Sign In with Passkey</h1>
-      <p>Use your saved passkey, YubiKey, or other security key to sign in securely.</p>
-      
-      <ErrorAlert 
-        error={error} 
-        onRetry={handleAuthenticate}
-        showRetry={!loading}
-      />
-      
       <button 
-        className="btn" 
-        onClick={handleAuthenticate}
-        disabled={loading}
+        className="back-button"
+        onClick={() => setLoginMethod('choice')}
       >
-        {loading ? <span className="loading"></span> : 'Sign In with Passkey'}
+        ← Back
       </button>
-      
-      <div className="text-center mt-3">
-        <button 
-          className="link" 
-          onClick={() => setShowQR(!showQR)}
-          style={{ background: 'none', border: 'none', fontSize: '16px' }}
-        >
-          Use another device
-        </button>
-      </div>
-      
-      {showQR && (
-        <div className="qr-container">
-          <p>Scan this QR code with your mobile device:</p>
-          {qrError ? (
-            <ErrorAlert error={qrError} onRetry={generateQRCode} showRetry={true} />
-          ) : qrCodeUrl ? (
-            <>
-              <div className="qr-code">
-                <img src={qrCodeUrl} alt="QR Code for mobile authentication" />
-              </div>
-              <div className="info-alert" style={{ marginTop: '10px', maxWidth: '300px' }}>
-                <svg className="info-icon" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-                <span style={{ fontSize: '13px' }}>Waiting for authentication from your mobile device...</span>
-              </div>
-            </>
-          ) : (
-            <div className="loading"></div>
-          )}
-          <p style={{ fontSize: '14px', color: '#666', textAlign: 'center', marginTop: '10px' }}>
-            Make sure you have already registered a passkey on your mobile device
-          </p>
+
+      <h1>Sign In</h1>
+      <p>Enter your email and password</p>
+
+      <ErrorAlert error={error} />
+
+      {needsEmailVerification && (
+        <div className="warning-alert">
+          <p>Your email address needs to be verified.</p>
+          <button 
+            className="link-button"
+            onClick={handleResendVerification}
+            disabled={loading}
+          >
+            Resend verification email
+          </button>
         </div>
       )}
-      
+
+      <form onSubmit={handleEmailLogin}>
+        <div className="form-group">
+          <label htmlFor="email">Email Address</label>
+          <input
+            type="email"
+            id="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="john@example.com"
+            required
+            disabled={showTOTP}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="password">Password</label>
+          <div className="password-input">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              required
+              disabled={showTOTP}
+            />
+            <button
+              type="button"
+              className="toggle-password"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
+        </div>
+
+        {showTOTP && (
+          <div className="form-group">
+            <label htmlFor="totpCode">
+              {useBackupCode ? 'Backup Code' : '2FA Code'}
+            </label>
+            <input
+              type="text"
+              id="totpCode"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value.toUpperCase())}
+              placeholder={useBackupCode ? "XXXXX-XXXXX" : "000000"}
+              pattern={useBackupCode ? "[A-Z0-9]{5}-[A-Z0-9]{5}" : "[0-9]{6}"}
+              maxLength={useBackupCode ? 11 : 6}
+              autoFocus
+              required
+            />
+            <p style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
+              {useBackupCode 
+                ? 'Enter one of your backup codes (e.g., 3R7AC-37MTN)' 
+                : 'Enter the 6-digit code from your authenticator app'}
+            </p>
+            <button
+              type="button"
+              className="link-button"
+              style={{ marginTop: '10px', fontSize: '14px' }}
+              onClick={() => {
+                setUseBackupCode(!useBackupCode);
+                setTotpCode('');
+                setError('');
+              }}
+            >
+              {useBackupCode ? 'Use authenticator app instead' : 'Use backup code instead'}
+            </button>
+          </div>
+        )}
+
+        <button 
+          type="submit"
+          className="btn" 
+          disabled={loading}
+        >
+          {loading ? <span className="loading"></span> : (showTOTP ? 'Verify & Sign In' : 'Sign In')}
+        </button>
+      </form>
+
+      <div className="links-section">
+        <Link to="/forgot-password" className="link">Forgot password?</Link>
+      </div>
+
+      <div className="divider">
+        <span>or</span>
+      </div>
+
+      <button 
+        className="secondary-btn"
+        onClick={() => setLoginMethod('passkey')}
+      >
+        Sign in with Passkey
+      </button>
+
       <div className="text-center mt-3">
         Don't have an account? <Link to="/signup" className="link">Create Account</Link>
       </div>

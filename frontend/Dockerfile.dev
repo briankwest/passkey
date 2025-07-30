@@ -1,16 +1,35 @@
-FROM node:20-alpine
+FROM nginx:alpine
 
+# Install Node.js for Vite
+RUN apk add --no-cache nodejs npm
+
+# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Use npm install for development
+# Install dependencies
 RUN npm install
 
-# Copy all source files
+# Copy source files
 COPY . .
+
+# Copy nginx config
+COPY nginx.dev.conf /etc/nginx/nginx.conf
+
+# Create startup script
+RUN cat > /start.sh << 'EOF'
+#!/bin/sh
+# Start Vite dev server in background
+npm run dev -- --host 0.0.0.0 --port 5173 &
+
+# Start nginx in foreground
+nginx -g 'daemon off;'
+EOF
+
+RUN chmod +x /start.sh
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["/start.sh"]

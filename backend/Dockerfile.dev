@@ -2,15 +2,18 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Use npm install for development
+# Install all dependencies including devDependencies
 RUN npm install
 
-# Copy all source files
+# Copy all backend source files
 COPY . .
 
-EXPOSE 5000
+# Copy database directory
+COPY database ./database
+
+EXPOSE 5001
 
 CMD ["npm", "run", "dev"]

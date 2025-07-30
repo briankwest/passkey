@@ -2,6 +2,11 @@ export interface User {
   id: string;
   username?: string;
   email?: string;
+  first_name?: string;
+  last_name?: string;
+  password_hash?: string;
+  email_verified?: boolean;
+  email_verified_at?: Date;
   display_name?: string;
   avatar_url?: string;
   bio?: string;

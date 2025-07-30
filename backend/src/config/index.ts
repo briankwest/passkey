@@ -17,6 +17,20 @@ export const config = {
   webauthn: {
     rpName: process.env.RP_NAME || 'Passkey Demo',
     rpID: process.env.RP_ID || 'localhost',
-    origin: process.env.ORIGIN || 'http://localhost:3000'
+    origin: process.env.ORIGIN || 'http://localhost:3000',
+    // User verification: 'required' (always require PIN), 'preferred' (optional PIN), 'discouraged' (no PIN)
+    userVerification: (process.env.USER_VERIFICATION || 'preferred') as 'required' | 'preferred' | 'discouraged'
+  },
+  app: {
+    name: process.env.APP_NAME || 'Passkey Demo',
+    url: process.env.APP_URL || process.env.ORIGIN || 'http://localhost:3000'
+  },
+  email: {
+    mailgunApiKey: process.env.MAILGUN_API_KEY || '',
+    mailgunDomain: process.env.MAILGUN_DOMAIN || '',
+    fromEmail: process.env.MAILGUN_FROM_EMAIL || 'noreply@example.com',
+    fromName: process.env.MAILGUN_FROM_NAME || 'Passkey Demo',
+    verificationExpiry: process.env.EMAIL_VERIFICATION_EXPIRY || '24h',
+    verificationRequired: process.env.EMAIL_VERIFICATION_REQUIRED === 'true'
   }
 };
