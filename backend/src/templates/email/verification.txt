@@ -1,0 +1,12 @@
+Hello{{#firstName}} {{firstName}}{{/firstName}}!
+
+Thanks for creating an account with {{appName}}.
+
+Please verify your email address by visiting this link:
+{{verificationUrl}}
+
+This link will expire in 24 hours.
+
+If you didn't create an account, you can safely ignore this email.
+
+© {{year}} {{appName}}. All rights reserved.

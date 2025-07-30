@@ -1,0 +1,19 @@
+Welcome to {{appName}}!
+
+Hi{{#firstName}} {{firstName}}{{/firstName}}!
+
+Your account has been successfully verified. Here's what you can do next:
+
+🔐 Add a Passkey
+Enable passwordless login with your device's biometrics or security key.
+
+🛡️ Enable Two-Factor Authentication
+Add an extra layer of security with TOTP authentication.
+
+👤 Complete Your Profile
+Add your display name and other profile information.
+
+Go to Security Settings:
+{{securitySettingsUrl}}
+
+© {{year}} {{appName}}. All rights reserved.

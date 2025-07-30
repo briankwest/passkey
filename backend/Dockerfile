@@ -30,6 +30,9 @@ RUN npm install --production
 # Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
+# Copy email templates (from source, not builder since TypeScript doesn't compile templates)
+COPY --chown=nodejs:nodejs backend/src/templates ./src/templates
+
 # Create database directory and copy schema
 RUN mkdir -p ./database
 COPY --chown=nodejs:nodejs database/schema.sql ./database/schema.sql

@@ -77,17 +77,3 @@ export const isPasskeyNotFoundError = (error: any): boolean => {
   return error.response?.data?.error?.includes('Credential not found') || 
          error.response?.status === 404;
 };
-
-export const isSessionExpiredError = (error: any): boolean => {
-  return error.response?.status === 401 || 
-         error.response?.data?.error?.includes('challenge');
-};
-
-export const isDeviceNotSupportedError = (error: any): boolean => {
-  return error.name === 'NotSupportedError' || 
-         !window.PublicKeyCredential;
-};
-
-export const isUserCancelledError = (error: any): boolean => {
-  return error.name === 'NotAllowedError';
-};
