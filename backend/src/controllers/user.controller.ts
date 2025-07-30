@@ -20,6 +20,8 @@ export class UserController {
       id: user.id,
       username: user.username,
       email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
       display_name: user.display_name,
       avatar_url: user.avatar_url,
       bio: user.bio,
@@ -34,7 +36,7 @@ export class UserController {
       throw new AuthError('Unauthorized');
     }
     
-    const { username, email, display_name, avatar_url, bio } = req.body;
+    const { username, email, first_name, last_name, display_name, avatar_url, bio } = req.body;
     
     // Check username availability if changing
     if (username) {
@@ -50,6 +52,8 @@ export class UserController {
     const updatedUser = await userService.updateProfile(userId, {
       username,
       email,
+      first_name,
+      last_name,
       display_name,
       avatar_url,
       bio
@@ -59,6 +63,8 @@ export class UserController {
       id: updatedUser.id,
       username: updatedUser.username,
       email: updatedUser.email,
+      first_name: updatedUser.first_name,
+      last_name: updatedUser.last_name,
       display_name: updatedUser.display_name,
       avatar_url: updatedUser.avatar_url,
       bio: updatedUser.bio

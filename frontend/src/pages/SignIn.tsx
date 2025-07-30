@@ -25,7 +25,7 @@ export const SignIn: React.FC = () => {
   const [qrError, setQrError] = useState('');
   const pollingInterval = useRef<NodeJS.Timeout>();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, refreshUser } = useAuth();
   useEffect(() => {
     // Check if browser supports WebAuthn
     if (!window.PublicKeyCredential) {
@@ -121,6 +121,8 @@ export const SignIn: React.FC = () => {
       if (response.data.token) {
         // Login successful (with or without TOTP)
         localStorage.setItem('token', response.data.token);
+        // Update the auth context with the new user data
+        await refreshUser();
         navigate('/profile');
       } else if (response.data.requiresTOTP) {
         // TOTP required, show the input

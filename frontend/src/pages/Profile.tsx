@@ -16,6 +16,8 @@ export const Profile: React.FC = () => {
   const [formData, setFormData] = useState({
     username: user?.username || '',
     email: user?.email || '',
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
     display_name: user?.display_name || '',
     bio: user?.bio || ''
   });
@@ -48,8 +50,18 @@ export const Profile: React.FC = () => {
   };
 
   const getInitials = () => {
+    if (user?.first_name && user?.last_name) {
+      return `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
+    }
     const name = user?.display_name || user?.username || 'U';
     return name.charAt(0).toUpperCase();
+  };
+  
+  const getDisplayName = () => {
+    if (user?.first_name || user?.last_name) {
+      return `${user?.first_name || ''} ${user?.last_name || ''}`.trim();
+    }
+    return user?.display_name || user?.username || 'New User';
   };
 
   const handleCancel = () => {
@@ -59,6 +71,8 @@ export const Profile: React.FC = () => {
     setFormData({
       username: user?.username || '',
       email: user?.email || '',
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
       display_name: user?.display_name || '',
       bio: user?.bio || ''
     });
@@ -80,7 +94,7 @@ export const Profile: React.FC = () => {
           {getInitials()}
         </div>
         <div>
-          <h2>{user.display_name || user.username || 'New User'}</h2>
+          <h2>{getDisplayName()}</h2>
           <p style={{ color: '#666', margin: 0 }}>
             Member since {new Date(user.created_at || Date.now()).toLocaleDateString()}
           </p>
@@ -96,6 +110,14 @@ export const Profile: React.FC = () => {
           <div className="form-group">
             <label>Email</label>
             <p>{user.email || 'Not set'}</p>
+          </div>
+          <div className="form-group">
+            <label>First Name</label>
+            <p>{user.first_name || 'Not set'}</p>
+          </div>
+          <div className="form-group">
+            <label>Last Name</label>
+            <p>{user.last_name || 'Not set'}</p>
           </div>
           <div className="form-group">
             <label>Display Name</label>
@@ -152,6 +174,30 @@ export const Profile: React.FC = () => {
           </div>
 
           <div className="form-group">
+            <label htmlFor="first_name">First Name</label>
+            <input
+              type="text"
+              id="first_name"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              placeholder="Your first name"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="last_name">Last Name</label>
+            <input
+              type="text"
+              id="last_name"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              placeholder="Your last name"
+            />
+          </div>
+
+          <div className="form-group">
             <label htmlFor="display_name">Display Name</label>
             <input
               type="text"
@@ -161,6 +207,9 @@ export const Profile: React.FC = () => {
               onChange={handleChange}
               placeholder="How should we address you?"
             />
+            <small style={{ color: '#666', fontSize: '0.9em' }}>
+              Leave blank to use your full name
+            </small>
           </div>
 
           <div className="form-group">
