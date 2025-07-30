@@ -9,11 +9,15 @@ import SecuritySettings from './pages/SecuritySettings';
 import VerifyEmail from './pages/VerifyEmail';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
+import { useCsrfToken, configureAxiosCSRF } from './hooks/useCsrfToken';
+import { useTokenRefresh } from './hooks/useTokenRefresh';
+import { useEffect } from 'react';
 
-function App() {
+function AppContent() {
+  useTokenRefresh();
+  
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
         <Routes>
           <Route path="/signup" element={<SignUp />} />
           <Route path="/signin" element={<SignIn />} />
@@ -40,6 +44,23 @@ function App() {
           <Route path="/" element={<Navigate to="/signin" replace />} />
         </Routes>
       </Router>
+  );
+}
+
+function App() {
+  const csrfToken = useCsrfToken();
+
+  useEffect(() => {
+    if (csrfToken) {
+      configureAxiosCSRF(csrfToken);
+      // Store in window for immediate access
+      (window as any).csrfToken = csrfToken;
+    }
+  }, [csrfToken]);
+
+  return (
+    <AuthProvider>
+      <AppContent />
     </AuthProvider>
   );
 }

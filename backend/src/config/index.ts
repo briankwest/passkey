@@ -30,5 +30,18 @@ export const config = {
     fromName: process.env.MAILGUN_FROM_NAME || 'Passkey',
     verificationExpiry: process.env.EMAIL_VERIFICATION_EXPIRY || '24h',
     verificationRequired: process.env.EMAIL_VERIFICATION_REQUIRED === 'true'
+  },
+  rateLimit: {
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10)
+  },
+  security: {
+    bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
+    maxFailedAttempts: parseInt(process.env.MAX_FAILED_ATTEMPTS || '5', 10),
+    lockoutDuration: parseInt(process.env.LOCKOUT_DURATION || '30', 10),
+    sessionCookie: {
+      secure: process.env.SESSION_COOKIE_SECURE === 'true',
+      sameSite: (process.env.SESSION_COOKIE_SAMESITE || 'lax') as 'strict' | 'lax' | 'none',
+    }
   }
 };

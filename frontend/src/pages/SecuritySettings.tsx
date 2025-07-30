@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { startRegistration } from '@simplewebauthn/browser';
 import { ErrorAlert } from '../components/ErrorAlert';
+import { getCsrfToken } from '../hooks/useCsrfToken';
 interface Passkey {
     id: string;
     name?: string;
     device_name?: string;
-    created_at: string;
+    created_at?: string;
+    createdAt?: string;
     last_used?: string;
     last_used_at?: string;
+    lastUsed?: string;
 }
 interface TOTPStatus {
     enabled: boolean;
@@ -130,6 +133,7 @@ const SecuritySettings: React.FC = () => {
             });
             if (response.ok) {
                 const data = await response.json();
+                console.log('TOTP Status response:', data);
                 setTotpStatus(data);
             }
         } catch (err: any) {
@@ -183,8 +187,10 @@ const SecuritySettings: React.FC = () => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'X-CSRF-Token': getCsrfToken()
                 },
+                credentials: 'include',
                 body: JSON.stringify({ deviceName })
             });
             if (!optionsResponse.ok) {
@@ -198,8 +204,10 @@ const SecuritySettings: React.FC = () => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'X-CSRF-Token': getCsrfToken()
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     credential,
                     deviceName: deviceName || 'Security Key'
@@ -224,8 +232,10 @@ const SecuritySettings: React.FC = () => {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/passkeys/${passkeyId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                credentials: 'include'
             });
             if (!response.ok) {
                 throw new Error('Failed to delete passkey');
@@ -241,8 +251,10 @@ const SecuritySettings: React.FC = () => {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/totp/setup`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                credentials: 'include'
             });
             if (!response.ok) throw new Error('Failed to setup TOTP');
             const setup = await response.json();
@@ -259,9 +271,11 @@ const SecuritySettings: React.FC = () => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'X-CSRF-Token': getCsrfToken()
                 },
-                body: JSON.stringify({ token: totpCode })
+                credentials: 'include',
+                body: JSON.stringify({ totpCode: totpCode })
             });
             if (!response.ok) {
                 throw new Error('Invalid verification code');
@@ -284,8 +298,10 @@ const SecuritySettings: React.FC = () => {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/totp`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                credentials: 'include'
             });
             if (!response.ok) {
                 throw new Error('Failed to disable TOTP');
@@ -309,8 +325,10 @@ const SecuritySettings: React.FC = () => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'X-CSRF-Token': getCsrfToken()
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     currentPassword: hasPassword ? currentPassword : undefined,
                     newPassword
@@ -321,11 +339,12 @@ const SecuritySettings: React.FC = () => {
                 throw new Error(error.message || 'Failed to change password');
             }
             setSuccess(hasPassword ? 'Password changed successfully' : 'Password created successfully');
-            setHasPassword(true); // Update state after creating password
             setShowChangePassword(false);
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
+            // Reload user profile to get updated has_password status
+            await loadUserProfile();
         } catch (err: any) {
             setError(err.message || 'Failed to change password');
         }
@@ -402,8 +421,8 @@ Store these codes in a secure location.`;
                                     <div className="method-info">
                                         <div className="method-name">{passkey.name || passkey.device_name || 'Unnamed Passkey'}</div>
                                         <div className="method-details">
-                                            Added: {new Date(passkey.created_at).toLocaleDateString()}
-                                            {(passkey.last_used || passkey.last_used_at) && ` | Last used: ${new Date(passkey.last_used || passkey.last_used_at || '').toLocaleDateString()}`}
+                                            Added: {new Date(passkey.createdAt || passkey.created_at || '').toLocaleDateString()}
+                                            {(passkey.lastUsed || passkey.last_used || passkey.last_used_at) && ` | Last used: ${new Date(passkey.lastUsed || passkey.last_used || passkey.last_used_at || '').toLocaleDateString()}`}
                                         </div>
                                     </div>
                                     <button 
@@ -472,8 +491,10 @@ Store these codes in a secure location.`;
                                             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/totp/backup-codes/regenerate`, {
                                                 method: 'POST',
                                                 headers: {
-                                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                                                }
+                                                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                                    'X-CSRF-Token': getCsrfToken()
+                                                },
+                                                credentials: 'include'
                                             });
                                             if (response.ok) {
                                                 const data = await response.json();

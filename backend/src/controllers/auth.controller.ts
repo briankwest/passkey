@@ -8,6 +8,7 @@ import { CrossDeviceService } from '../services/crossDevice.service';
 import { challengeService } from '../services/challenge.service';
 import { generateAuthToken } from '../utils/jwt';
 import { getClientIp } from '../utils/getClientIp';
+import { RefreshTokenService } from '../services/refreshToken.service';
 import { config } from '../config';
 import crypto from 'crypto';
 import { query } from '../db';
@@ -268,8 +269,18 @@ export class AuthController {
         );
         // Passkey is already multi-factor authentication (possession + biometrics)
         // No need to require TOTP on top of it
-        // Generate JWT
+        // Generate JWT and refresh token
         const token = generateAuthToken(user.id);
+        const refreshToken = await RefreshTokenService.generateRefreshToken(user.id);
+        
+        // Set refresh token as httpOnly cookie
+        res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          secure: config.nodeEnv === 'production',
+          sameSite: 'strict',
+          maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        });
+        
         res.json({ 
           verified: true, 
           token,
@@ -378,8 +389,18 @@ export class AuthController {
           });
         }
       }
-      // Generate JWT
+      // Generate JWT and refresh token
       const token = generateAuthToken(user.id);
+      const refreshToken = await RefreshTokenService.generateRefreshToken(user.id);
+      
+      // Set refresh token as httpOnly cookie
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: config.nodeEnv === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+      
       res.json({ 
         success: true,
         token,
@@ -578,14 +599,14 @@ export class AuthController {
   async verifyTOTPSetup(req: Request, res: Response) {
     try {
       const userId = (req as any).user?.userId;
-      const { token } = req.body;
+      const { totpCode } = req.body;
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
-      if (!token) {
+      if (!totpCode) {
         return res.status(400).json({ error: 'Verification code required' });
       }
-      const verified = await totpService.verifyTOTPSetup(userId, token);
+      const verified = await totpService.verifyTOTPSetup(userId, totpCode);
       if (verified) {
         res.json({ 
           success: true,
@@ -898,13 +919,64 @@ export class AuthController {
     }
   }
   // ============= Session Management =============
-  async logout(req: Request, res: Response) {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to logout' });
+  async refreshToken(req: Request, res: Response) {
+    try {
+      const refreshToken = req.cookies?.refreshToken;
+      
+      if (!refreshToken) {
+        return res.status(401).json({ error: 'No refresh token provided' });
       }
-      res.json({ success: true });
-    });
+      
+      const result = await RefreshTokenService.refreshAccessToken(refreshToken);
+      
+      if (!result) {
+        res.clearCookie('refreshToken');
+        return res.status(401).json({ error: 'Invalid or expired refresh token' });
+      }
+      
+      // Get user data
+      const user = await userService.getUserById(result.userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      res.json({
+        success: true,
+        token: result.accessToken,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          display_name: user.display_name
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to refresh token' });
+    }
+  }
+  
+  async logout(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId;
+      
+      // Revoke refresh token if user is authenticated
+      if (userId) {
+        await RefreshTokenService.revokeRefreshToken(userId);
+      }
+      
+      // Clear refresh token cookie
+      res.clearCookie('refreshToken');
+      
+      // Destroy session
+      req.session.destroy((err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to logout' });
+        }
+        res.json({ success: true });
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to logout' });
+    }
   }
   // ============= Security Settings Methods =============
   async getTOTPStatus(req: Request, res: Response) {

@@ -113,18 +113,31 @@ export const SignIn: React.FC = () => {
     setError('');
     setNeedsEmailVerification(false);
     try {
-      const response = await api.post('/auth/login', {
-        email,
-        password,
-        totpCode: showTOTP ? totpCode : undefined
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email,
+          password,
+          totpCode: showTOTP ? totpCode : undefined
+        })
       });
-      if (response.data.token) {
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw { response: { data } };
+      }
+      if (data.token) {
         // Login successful (with or without TOTP)
-        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('token', data.token);
         // Update the auth context with the new user data
         await refreshUser();
         navigate('/profile');
-      } else if (response.data.requiresTOTP) {
+      } else if (data.requiresTOTP) {
         // TOTP required, show the input
         setShowTOTP(true);
         setError('');
@@ -157,8 +170,18 @@ export const SignIn: React.FC = () => {
           setError(`Invalid 2FA code. ${3 - newAttempts} attempts remaining.`);
           setTotpCode(''); // Clear the code for retry
         }
+      } else if (errorData?.error === 'Account is locked due to too many failed attempts') {
+        const lockedUntil = errorData?.lockedUntil;
+        if (lockedUntil) {
+          const lockTime = new Date(lockedUntil);
+          const now = new Date();
+          const minutesLeft = Math.ceil((lockTime.getTime() - now.getTime()) / 60000);
+          setError(`Account locked due to too many failed attempts. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
+        } else {
+          setError('Account locked due to too many failed attempts. Please try again later.');
+        }
       } else {
-        setError(errorData?.error || 'Login failed');
+        setError(errorData?.error || errorData?.message || 'Login failed');
       }
     } finally {
       setLoading(false);

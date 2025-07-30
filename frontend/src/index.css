@@ -371,6 +371,25 @@ body {
   background-color: #c82333;
 }
 
+/* QR Code Styling */
+.qr-code {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+.qr-code img {
+  max-width: 250px;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  background-color: white;
+}
+
 .empty-state {
   text-align: center;
   color: #666;

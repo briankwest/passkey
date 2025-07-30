@@ -18,11 +18,17 @@ export class TOTPService {
   async setupTOTP(userId: string, userEmail: string): Promise<TOTPSetup> {
     // Check if user already has TOTP
     const existing = await query(
-      'SELECT id FROM user_totp WHERE user_id = $1',
+      'SELECT id, verified FROM user_totp WHERE user_id = $1',
       [userId]
     );
-    if (existing.rows.length > 0) {
+    if (existing.rows.length > 0 && existing.rows[0].verified) {
       throw new Error('TOTP is already configured for this user');
+    }
+    
+    // If exists but not verified, delete the old one to allow re-setup
+    if (existing.rows.length > 0 && !existing.rows[0].verified) {
+      await query('DELETE FROM user_totp WHERE user_id = $1', [userId]);
+      await query('DELETE FROM backup_codes WHERE user_id = $1', [userId]);
     }
     // Generate secret
     const secret = speakeasy.generateSecret({

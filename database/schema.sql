@@ -137,6 +137,19 @@ CREATE INDEX IF NOT EXISTS idx_email_token ON email_verification_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_email_user_expires ON email_verification_tokens(user_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_email_logs ON email_logs(email, type, sent_at);
 
+-- Create refresh_tokens table
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  token VARCHAR(64) UNIQUE NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_used_at TIMESTAMP
+);
+
+-- Create indexes for refresh_tokens
+CREATE INDEX IF NOT EXISTS idx_refresh_token ON refresh_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_refresh_token_expires ON refresh_tokens(expires_at);
+
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
