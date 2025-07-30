@@ -93,16 +93,17 @@ export const AuthenticatedApiExample: React.FC = () => {
     executeAuth('/api/user/profile');
   }, []);
 
-  const updateProfile = async (profileData: any) => {
-    const result = await executeAuth('/api/user/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData)
-    });
-
-    if (result) {
-      console.log('Profile updated successfully');
-    }
-  };
+  // Example of how to update profile (commented out as it's not used in this example)
+  // const updateProfile = async (profileData: any) => {
+  //   const result = await executeAuth('/api/user/profile', {
+  //     method: 'PUT',
+  //     body: JSON.stringify(profileData)
+  //   });
+  //
+  //   if (result) {
+  //     console.log('Profile updated successfully');
+  //   }
+  // };
 
   return (
     <div>

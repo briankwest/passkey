@@ -4,9 +4,11 @@ import { startRegistration } from '@simplewebauthn/browser';
 import { ErrorAlert } from '../components/ErrorAlert';
 interface Passkey {
     id: string;
-    device_name: string;
+    name?: string;
+    device_name?: string;
     created_at: string;
-    last_used_at: string;
+    last_used?: string;
+    last_used_at?: string;
 }
 interface TOTPStatus {
     enabled: boolean;
@@ -78,23 +80,7 @@ const SecuritySettings: React.FC = () => {
             setPasswordStrength(null);
         }
     }, [newPassword]);
-    const loadSecurityData = async () => {
-        const abortController = new AbortController();
-        try {
-            setLoading(true);
-            await Promise.all([
-                loadUserProfile(abortController.signal),
-                loadPasskeys(abortController.signal),
-                loadTOTPStatus(abortController.signal),
-                loadBackupCodes(abortController.signal),
-                loadRecentActivity(abortController.signal)
-            ]);
-        } catch (err) {
-            setError('Failed to load security data');
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Remove unused loadSecurityData function
     const loadUserProfile = async (signal?: AbortSignal) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
@@ -128,8 +114,10 @@ const SecuritySettings: React.FC = () => {
             } else {
                 console.error('Failed to load passkeys:', response.status, await response.text());
             }
-        } catch (err) {
-            console.error('Failed to load passkeys:', err);
+        } catch (err: any) {
+            if (err.name !== 'AbortError') {
+                console.error('Failed to load passkeys:', err);
+            }
         }
     };
     const loadTOTPStatus = async (signal?: AbortSignal) => {
@@ -144,8 +132,10 @@ const SecuritySettings: React.FC = () => {
                 const data = await response.json();
                 setTotpStatus(data);
             }
-        } catch (err) {
-            console.error('Failed to load TOTP status:', err);
+        } catch (err: any) {
+            if (err.name !== 'AbortError') {
+                console.error('Failed to load TOTP status:', err);
+            }
         }
     };
     const loadBackupCodes = async (signal?: AbortSignal) => {
@@ -160,8 +150,10 @@ const SecuritySettings: React.FC = () => {
                 const data = await response.json();
                 setBackupCodes(data);
             }
-        } catch (err) {
-            console.error('Failed to load backup codes:', err);
+        } catch (err: any) {
+            if (err.name !== 'AbortError') {
+                console.error('Failed to load backup codes:', err);
+            }
         }
     };
     const loadRecentActivity = async (signal?: AbortSignal) => {
@@ -176,8 +168,10 @@ const SecuritySettings: React.FC = () => {
                 const data = await response.json();
                 setRecentActivity(data);
             }
-        } catch (err) {
-            console.error('Failed to load recent activity:', err);
+        } catch (err: any) {
+            if (err.name !== 'AbortError') {
+                console.error('Failed to load recent activity:', err);
+            }
         }
     };
     const handleAddPasskey = async (e: React.FormEvent) => {
@@ -367,22 +361,6 @@ Store these codes in a secure location.`;
         a.click();
         URL.revokeObjectURL(url);
     };
-    const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
-        const binaryString = atob(base64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes.buffer;
-    };
-    const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return btoa(binary);
-    };
     const getMethodIcon = (method: string): string => {
         const icons: Record<string, string> = {
             'passkey': '🔑',
@@ -422,10 +400,10 @@ Store these codes in a secure location.`;
                             {passkeys.map(passkey => (
                                 <div key={passkey.id} className="auth-method-item">
                                     <div className="method-info">
-                                        <div className="method-name">{passkey.name}</div>
+                                        <div className="method-name">{passkey.name || passkey.device_name || 'Unnamed Passkey'}</div>
                                         <div className="method-details">
-                                            Added: {new Date(passkey.createdAt).toLocaleDateString()}
-                                            {passkey.lastUsed && ` | Last used: ${new Date(passkey.lastUsed).toLocaleDateString()}`}
+                                            Added: {new Date(passkey.created_at).toLocaleDateString()}
+                                            {(passkey.last_used || passkey.last_used_at) && ` | Last used: ${new Date(passkey.last_used || passkey.last_used_at || '').toLocaleDateString()}`}
                                         </div>
                                     </div>
                                     <button 

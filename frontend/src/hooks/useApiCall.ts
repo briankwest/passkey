@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useLoading } from './useLoading';
 import { useError } from './useError';
 
-interface UseApiCallOptions {
+export interface UseApiCallOptions {
   /**
    * Whether to show loading state (default: true)
    */
@@ -35,7 +35,7 @@ export const useApiCall = <T = any>(options: UseApiCallOptions = {}) => {
   } = options;
 
   const { loading, setLoading } = useLoading(false);
-  const { error, setError, clearError, handleError } = useError();
+  const { error, clearError, handleError } = useError();
   const [data, setData] = useState<T | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 

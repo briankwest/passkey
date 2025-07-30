@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApiCall, UseApiCallOptions } from './useApiCall';
+import { useApiCall } from './useApiCall';
+import type { UseApiCallOptions } from './useApiCall';
 
 interface AuthenticatedApiOptions extends UseApiCallOptions {
   /**
