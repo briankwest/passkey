@@ -1,56 +1,71 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, useAsyncState } from '../hooks';
 import userService from '../services/user.service';
 import { ErrorAlert } from '../components/ErrorAlert';
-import { getErrorMessage } from '../utils/errorMessages';
+
 export const Profile: React.FC = () => {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Use our custom hook for async state management
+  const { loading, error, execute, clearError } = useAsyncState();
+  
   const [formData, setFormData] = useState({
     username: user?.username || '',
     email: user?.email || '',
     display_name: user?.display_name || '',
     bio: user?.bio || ''
   });
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
     setSuccess('');
-    try {
+    
+    const result = await execute(async () => {
       await userService.updateProfile(formData);
       await refreshUser();
+      return true;
+    });
+    
+    if (result) {
       setSuccess('Profile updated successfully!');
       setEditing(false);
-    } catch (err: any) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
     }
   };
+
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
+    await execute(logout);
   };
+
   const getInitials = () => {
     const name = user?.display_name || user?.username || 'U';
     return name.charAt(0).toUpperCase();
   };
+
+  const handleCancel = () => {
+    setEditing(false);
+    clearError();
+    setSuccess('');
+    setFormData({
+      username: user?.username || '',
+      email: user?.email || '',
+      display_name: user?.display_name || '',
+      bio: user?.bio || ''
+    });
+  };
+
   if (!user) return null;
+
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -59,6 +74,7 @@ export const Profile: React.FC = () => {
           Sign Out
         </button>
       </div>
+
       <div className="profile-header">
         <div className="avatar">
           {getInitials()}
@@ -70,6 +86,7 @@ export const Profile: React.FC = () => {
           </p>
         </div>
       </div>
+
       {!editing ? (
         <div style={{ background: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)' }}>
           <div className="form-group">
@@ -109,6 +126,7 @@ export const Profile: React.FC = () => {
             showRetry={!loading}
           />
           {success && <div className="success-message">{success}</div>}
+          
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
@@ -120,6 +138,7 @@ export const Profile: React.FC = () => {
               placeholder="Choose a unique username"
             />
           </div>
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -131,6 +150,7 @@ export const Profile: React.FC = () => {
               placeholder="your@email.com"
             />
           </div>
+
           <div className="form-group">
             <label htmlFor="display_name">Display Name</label>
             <input
@@ -142,6 +162,7 @@ export const Profile: React.FC = () => {
               placeholder="How should we address you?"
             />
           </div>
+
           <div className="form-group">
             <label htmlFor="bio">Bio</label>
             <textarea
@@ -153,6 +174,7 @@ export const Profile: React.FC = () => {
               placeholder="Tell us about yourself..."
             />
           </div>
+
           <div style={{ display: 'flex', gap: '10px' }}>
             <button type="submit" className="btn" disabled={loading}>
               {loading ? <span className="loading"></span> : 'Save Changes'}
@@ -160,17 +182,7 @@ export const Profile: React.FC = () => {
             <button 
               type="button" 
               className="btn btn-secondary" 
-              onClick={() => {
-                setEditing(false);
-                setError('');
-                setSuccess('');
-                setFormData({
-                  username: user.username || '',
-                  email: user.email || '',
-                  display_name: user.display_name || '',
-                  bio: user.bio || ''
-                });
-              }}
+              onClick={handleCancel}
             >
               Cancel
             </button>
