@@ -239,9 +239,9 @@ else
     print_test "TOTP setup failed" 1 "$TOTP_RESPONSE"
 fi
 
-# We need to verify TOTP setup before we can test TOTP login
+# Note: TOTP setup generates backup codes immediately, even before TOTP is verified
 # In a real test, we would use an actual TOTP library to generate codes
-# For this test, we'll skip TOTP verification setup
+# For this test, we'll skip TOTP verification but can still test backup codes
 
 # Test password change endpoint
 echo "   Testing password change..."
@@ -366,6 +366,34 @@ if echo "$LOGIN_RESET_PASS" | grep -q "requiresTOTP"; then
             fi
             
             JWT_TOKEN=$NEW_JWT_TOKEN
+            
+            # Test using the same backup code again (should fail)
+            echo "   Testing backup code reuse prevention..."
+            LOGIN_BACKUP_REUSE=$(curl -s -X POST "$BASE_URL/api/auth/login" \
+              -H "Content-Type: application/json" \
+              -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$RESET_PASSWORD\",\"totpCode\":\"$FIRST_BACKUP_CODE\"}")
+            
+            if echo "$LOGIN_BACKUP_REUSE" | grep -q "Invalid 2FA code"; then
+                print_test "Used backup code correctly rejected" 0
+            else
+                print_test "Backup code reuse prevention failed" 1 "$LOGIN_BACKUP_REUSE"
+            fi
+            
+            # Extract a new backup code from regenerated codes
+            SECOND_BACKUP_CODE=$(echo "$REGEN_RESPONSE" | grep -o '"[A-Z0-9]\{5\}-[A-Z0-9]\{5\}"' | head -2 | tail -1 | sed 's/"//g')
+            
+            if [ -n "$SECOND_BACKUP_CODE" ]; then
+                echo "   Testing login with regenerated backup code..."
+                LOGIN_BACKUP2=$(curl -s -X POST "$BASE_URL/api/auth/login" \
+                  -H "Content-Type: application/json" \
+                  -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$RESET_PASSWORD\",\"totpCode\":\"$SECOND_BACKUP_CODE\"}")
+                
+                if echo "$LOGIN_BACKUP2" | grep -q "token"; then
+                    print_test "Login with regenerated backup code successful" 0
+                else
+                    print_test "Login with regenerated backup code failed" 1 "$LOGIN_BACKUP2"
+                fi
+            fi
         else
             print_test "Login with backup code failed" 1 "$LOGIN_BACKUP"
         fi
