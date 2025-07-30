@@ -7,6 +7,7 @@ import { config } from './config';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import passkeyRoutes from './routes/passkey.routes';
+import { errorHandler } from './middleware/errorHandler';
 const app = express();
 const PgSession = connectPgSession(session);
 // Middleware
@@ -56,9 +57,7 @@ app.use('/api/passkeys', passkeyRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
-// Error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  res.status(500).json({ error: 'Something went wrong!' });
-});
+// Error handler middleware (must be last)
+app.use(errorHandler);
 app.listen(config.port, () => {
 });

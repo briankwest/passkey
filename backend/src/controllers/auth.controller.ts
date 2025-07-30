@@ -11,6 +11,7 @@ import { getClientIp } from '../utils/getClientIp';
 import { config } from '../config';
 import crypto from 'crypto';
 import { query } from '../db';
+import { asyncHandler, ValidationError, AuthError, NotFoundError, AppError } from '../middleware/errorHandler';
 // Extend session type inline
 declare module 'express-session' {
   interface SessionData {
@@ -28,15 +29,14 @@ const crossDeviceService = new CrossDeviceService();
 export class AuthController {
   // ============= Registration Methods =============
   // Email/Password Registration
-  async register(req: Request, res: Response) {
-    try {
+  register = asyncHandler(async (req: Request, res: Response) => {
       const { email, password, passwordConfirm, firstName, lastName } = req.body;
       // Validate inputs
       if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
+        throw new ValidationError('Email and password are required');
       }
       if (password !== passwordConfirm) {
-        return res.status(400).json({ error: 'Passwords do not match' });
+        throw new ValidationError('Passwords do not match');
       }
       // Validate password strength
       const passwordValidation = passwordService.validatePassword(
@@ -44,16 +44,15 @@ export class AuthController {
         [email, firstName, lastName].filter(Boolean)
       );
       if (!passwordValidation.isValid) {
-        return res.status(400).json({ 
-          error: 'Password does not meet requirements',
-          details: passwordValidation.errors,
+        throw new ValidationError('Password does not meet requirements', {
+          errors: passwordValidation.errors,
           strength: passwordValidation.strength
         });
       }
       // Check email availability
       const emailAvailable = await userService.checkEmailAvailable(email);
       if (!emailAvailable) {
-        return res.status(400).json({ error: 'Email already registered' });
+        throw new ValidationError('Email already registered');
       }
       // Create user
       const user = await userService.createUser({
@@ -75,10 +74,7 @@ export class AuthController {
         message: 'Account created successfully. Please check your email to verify your account.',
         requiresVerification: true
       });
-    } catch (error: any) {
-      res.status(500).json({ error: 'Failed to create account' });
-    }
-  }
+  })
   // Check email availability
   async checkEmail(req: Request, res: Response) {
     try {
