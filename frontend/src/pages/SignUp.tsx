@@ -4,21 +4,17 @@ import { startRegistration } from '@simplewebauthn/browser';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { DeviceCheck } from '../components/DeviceCheck';
 import api from '../services/api';
-
 type RegistrationMethod = 'choice' | 'passkey' | 'email';
-
 interface PasswordStrength {
   score: number;
   feedback: string;
   suggestions?: string[];
 }
-
 export const SignUp: React.FC = () => {
   const [registrationMethod, setRegistrationMethod] = useState<RegistrationMethod>('choice');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [browserSupported, setBrowserSupported] = useState(true);
-  
   // Email registration form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,14 +24,12 @@ export const SignUp: React.FC = () => {
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-
   useEffect(() => {
     // Check if browser supports WebAuthn
     if (!window.PublicKeyCredential) {
       setBrowserSupported(false);
     }
   }, []);
-
   useEffect(() => {
     // Check password strength when password changes
     if (password && registrationMethod === 'email') {
@@ -44,7 +38,6 @@ export const SignUp: React.FC = () => {
       setPasswordStrength(null);
     }
   }, [password, registrationMethod]);
-
   const checkPasswordStrength = async (pwd: string) => {
     try {
       const response = await api.post('/auth/check-password-strength', {
@@ -55,12 +48,10 @@ export const SignUp: React.FC = () => {
       console.error('Password strength check failed:', err);
     }
   };
-
   const handlePasskeyRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
     try {
       // Step 1: Check if email is available
       const checkResponse = await api.get(`/auth/check-email?email=${encodeURIComponent(email)}`);
@@ -69,13 +60,10 @@ export const SignUp: React.FC = () => {
         setLoading(false);
         return;
       }
-
       // Step 2: Get registration options (for new user) with email
       const { data: options } = await api.post('/auth/registration/options', { email });
-      
       // Step 3: Create credential with WebAuthn
       const credential = await startRegistration(options);
-      
       // Step 4: Verify registration with user data
       const { data: result } = await api.post('/auth/registration/verify', {
         credential,
@@ -89,7 +77,6 @@ export const SignUp: React.FC = () => {
           lastName
         }
       });
-      
       if (result.verified) {
         // User created with passkey, now send verification email
         await api.post('/auth/send-verification', { 
@@ -104,25 +91,21 @@ export const SignUp: React.FC = () => {
       setLoading(false);
     }
   };
-
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
     // Validate form
     if (!email || !password || !passwordConfirm) {
       setError('Please fill in all required fields');
       setLoading(false);
       return;
     }
-
     if (password !== passwordConfirm) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
-
     try {
       const response = await api.post('/auth/register', {
         email,
@@ -131,7 +114,6 @@ export const SignUp: React.FC = () => {
         firstName,
         lastName
       });
-
       if (response.data.success) {
         setEmailSent(true);
       }
@@ -142,12 +124,10 @@ export const SignUp: React.FC = () => {
       setLoading(false);
     }
   };
-
   const getPasswordStrengthClass = (score: number): string => {
     const classes = ['weak', 'fair', 'good', 'strong'];
     return classes[score] || 'weak';
   };
-
   if (emailSent) {
     return (
       <div className="auth-container">
@@ -167,13 +147,11 @@ export const SignUp: React.FC = () => {
       </div>
     );
   }
-
   if (registrationMethod === 'choice') {
     return (
       <div className="auth-container">
         <h1>Create Your Account</h1>
         <p>Choose how you'd like to register</p>
-
         <div className="registration-options">
           <button
             className="option-card"
@@ -187,7 +165,6 @@ export const SignUp: React.FC = () => {
               <span className="badge">Not supported on this browser</span>
             )}
           </button>
-
           <button
             className="option-card"
             onClick={() => setRegistrationMethod('email')}
@@ -197,14 +174,12 @@ export const SignUp: React.FC = () => {
             <p>Traditional registration with email verification</p>
           </button>
         </div>
-
         <div className="text-center mt-3">
           Already have an account? <Link to="/signin" className="link">Sign In</Link>
         </div>
       </div>
     );
   }
-
   if (registrationMethod === 'passkey') {
     return (
       <div className="auth-container">
@@ -214,14 +189,10 @@ export const SignUp: React.FC = () => {
         >
           ← Back
         </button>
-
         <h1>Create Account with Passkey</h1>
         <p>Enter your email to create a secure account with passkey authentication.</p>
-        
         <DeviceCheck />
-        
         <ErrorAlert error={error} />
-        
         <form onSubmit={handlePasskeyRegister}>
           <div className="form-group">
             <label htmlFor="email">Email Address</label>
@@ -235,7 +206,6 @@ export const SignUp: React.FC = () => {
               placeholder="you@example.com"
             />
           </div>
-
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="firstName">First Name</label>
@@ -262,7 +232,6 @@ export const SignUp: React.FC = () => {
               />
             </div>
           </div>
-          
           {browserSupported && (
             <button 
               type="submit"
@@ -273,7 +242,6 @@ export const SignUp: React.FC = () => {
             </button>
           )}
         </form>
-        
         <div className="info-alert mt-3">
           <svg className="info-icon" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -283,7 +251,6 @@ export const SignUp: React.FC = () => {
       </div>
     );
   }
-
   // Email & Password Registration
   return (
     <div className="auth-container">
@@ -293,12 +260,9 @@ export const SignUp: React.FC = () => {
       >
         ← Back
       </button>
-
       <h1>Create Account</h1>
       <p>Register with your email address</p>
-
       <ErrorAlert error={error} />
-
       <form onSubmit={handleEmailRegister}>
         <div className="form-row">
           <div className="form-group">
@@ -311,7 +275,6 @@ export const SignUp: React.FC = () => {
               placeholder="John"
             />
           </div>
-          
           <div className="form-group">
             <label htmlFor="lastName">Last Name</label>
             <input
@@ -323,7 +286,6 @@ export const SignUp: React.FC = () => {
             />
           </div>
         </div>
-
         <div className="form-group">
           <label htmlFor="email">Email Address *</label>
           <input
@@ -335,7 +297,6 @@ export const SignUp: React.FC = () => {
             required
           />
         </div>
-
         <div className="form-group">
           <label htmlFor="password">Password *</label>
           <div className="password-input">
@@ -355,7 +316,6 @@ export const SignUp: React.FC = () => {
               {showPassword ? '👁️' : '👁️‍🗨️'}
             </button>
           </div>
-          
           {passwordStrength && password && (
             <div className="password-strength">
               <div className={`strength-meter ${getPasswordStrengthClass(passwordStrength.score)}`}>
@@ -377,7 +337,6 @@ export const SignUp: React.FC = () => {
             </div>
           )}
         </div>
-
         <div className="form-group">
           <label htmlFor="passwordConfirm">Confirm Password *</label>
           <input
@@ -392,7 +351,6 @@ export const SignUp: React.FC = () => {
             <span className="error-text">Passwords do not match</span>
           )}
         </div>
-
         <button 
           type="submit"
           className="btn" 
@@ -401,14 +359,12 @@ export const SignUp: React.FC = () => {
           {loading ? <span className="loading"></span> : 'Create Account'}
         </button>
       </form>
-
       <div className="info-alert mt-3">
         <svg className="info-icon" width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
         </svg>
         <span>You can add a passkey for faster login after email verification</span>
       </div>
-
       <div className="text-center mt-3">
         Already have an account? <Link to="/signin" className="link">Sign In</Link>
       </div>

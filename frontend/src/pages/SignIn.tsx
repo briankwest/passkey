@@ -5,15 +5,12 @@ import QRCode from 'qrcode';
 import api from '../services/api';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { getErrorMessage, isPasskeyNotFoundError } from '../utils/errorMessages';
-
 type LoginMethod = 'choice' | 'passkey' | 'email' | 'qr';
-
 export const SignIn: React.FC = () => {
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('choice');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [browserSupported, setBrowserSupported] = useState(true);
-  
   // Email login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,22 +20,18 @@ export const SignIn: React.FC = () => {
   const [totpCode, setTotpCode] = useState('');
   const [totpAttempts, setTotpAttempts] = useState(0);
   const [useBackupCode, setUseBackupCode] = useState(false);
-  
   // QR Code state
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [qrError, setQrError] = useState('');
   const pollingInterval = useRef<NodeJS.Timeout>();
-  
   const navigate = useNavigate();
   const { login } = useAuth();
-
   useEffect(() => {
     // Check if browser supports WebAuthn
     if (!window.PublicKeyCredential) {
       setBrowserSupported(false);
     }
   }, []);
-
   useEffect(() => {
     // Cleanup polling on unmount or method change
     return () => {
@@ -47,35 +40,28 @@ export const SignIn: React.FC = () => {
       }
     };
   }, [loginMethod]);
-
   useEffect(() => {
     if (loginMethod === 'qr') {
       generateQRCode();
     }
   }, [loginMethod]);
-
   const generateQRCode = async () => {
     try {
       setQrError('');
       // Generate a session ID for cross-device authentication
       const newSessionId = crypto.randomUUID();
-      
       // Create session on backend
       await api.post('/auth/cross-device/create', { sessionId: newSessionId });
-      
       // Create URL with session ID
       const baseUrl = window.location.origin.includes('ngrok') 
         ? window.location.origin 
         : `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-      
       const authUrl = `${baseUrl}/mobile-auth?session=${newSessionId}`;
-      
       const url = await QRCode.toDataURL(authUrl, {
         width: 200,
         margin: 2,
       });
       setQrCodeUrl(url);
-      
       // Start polling for authentication
       startPolling(newSessionId);
     } catch (err) {
@@ -83,12 +69,10 @@ export const SignIn: React.FC = () => {
       setQrError('Unable to generate QR code. Please try again.');
     }
   };
-
   const startPolling = (sessionId: string) => {
     pollingInterval.current = setInterval(async () => {
       try {
         const { data } = await api.get(`/auth/cross-device/check/${sessionId}`);
-        
         if (data.authenticated && data.token) {
           // Authentication successful
           localStorage.setItem('token', data.token);
@@ -101,11 +85,9 @@ export const SignIn: React.FC = () => {
       }
     }, 2000); // Poll every 2 seconds
   };
-
   const handlePasskeyLogin = async () => {
     setLoading(true);
     setError('');
-    
     try {
       await login();
       navigate('/profile');
@@ -113,7 +95,6 @@ export const SignIn: React.FC = () => {
       console.error('Authentication error:', err);
       const errorMessage = getErrorMessage(err);
       setError(errorMessage);
-      
       // If passkey not found, suggest registration
       if (isPasskeyNotFoundError(err)) {
         setTimeout(() => {
@@ -126,20 +107,17 @@ export const SignIn: React.FC = () => {
       setLoading(false);
     }
   };
-
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setNeedsEmailVerification(false);
-
     try {
       const response = await api.post('/auth/login', {
         email,
         password,
         totpCode: showTOTP ? totpCode : undefined
       });
-
       if (response.data.token) {
         // Login successful (with or without TOTP)
         localStorage.setItem('token', response.data.token);
@@ -156,7 +134,6 @@ export const SignIn: React.FC = () => {
     } catch (err: any) {
       console.error('Login error:', err);
       const errorData = err.response?.data;
-      
       if (errorData?.error === 'email_not_verified') {
         setNeedsEmailVerification(true);
         setError('Please verify your email before logging in.');
@@ -167,7 +144,6 @@ export const SignIn: React.FC = () => {
         // Handle invalid TOTP code
         const newAttempts = totpAttempts + 1;
         setTotpAttempts(newAttempts);
-        
         if (newAttempts >= 3) {
           // Reset after 3 attempts
           setShowTOTP(false);
@@ -186,7 +162,6 @@ export const SignIn: React.FC = () => {
       setLoading(false);
     }
   };
-
   const handleResendVerification = async () => {
     setLoading(true);
     try {
@@ -199,13 +174,11 @@ export const SignIn: React.FC = () => {
       setLoading(false);
     }
   };
-
   if (loginMethod === 'choice') {
     return (
       <div className="auth-container">
         <h1>Welcome Back</h1>
         <p>Choose how you'd like to sign in</p>
-
         <div className="login-options">
           <button
             className="option-card"
@@ -219,7 +192,6 @@ export const SignIn: React.FC = () => {
               <span className="badge">Not supported</span>
             )}
           </button>
-
           <button
             className="option-card"
             onClick={() => setLoginMethod('email')}
@@ -228,7 +200,6 @@ export const SignIn: React.FC = () => {
             <h3>Email & Password</h3>
             <p>Traditional email and password login</p>
           </button>
-
           <button
             className="option-card"
             onClick={() => setLoginMethod('qr')}
@@ -238,14 +209,12 @@ export const SignIn: React.FC = () => {
             <p>Scan QR code with your phone</p>
           </button>
         </div>
-
         <div className="text-center mt-3">
           Don't have an account? <Link to="/signup" className="link">Create Account</Link>
         </div>
       </div>
     );
   }
-
   if (loginMethod === 'passkey') {
     return (
       <div className="auth-container">
@@ -255,16 +224,13 @@ export const SignIn: React.FC = () => {
         >
           ← Back
         </button>
-
         <h1>Sign In with Passkey</h1>
         <p>Use your saved passkey, YubiKey, or other security key</p>
-        
         <ErrorAlert 
           error={error} 
           onRetry={handlePasskeyLogin}
           showRetry={!loading}
         />
-        
         <button 
           className="btn" 
           onClick={handlePasskeyLogin}
@@ -272,7 +238,6 @@ export const SignIn: React.FC = () => {
         >
           {loading ? <span className="loading"></span> : 'Sign In with Passkey'}
         </button>
-
         <div className="alternative-methods">
           <p>Having trouble?</p>
           <button 
@@ -285,7 +250,6 @@ export const SignIn: React.FC = () => {
       </div>
     );
   }
-
   if (loginMethod === 'qr') {
     return (
       <div className="auth-container">
@@ -300,10 +264,8 @@ export const SignIn: React.FC = () => {
         >
           ← Back
         </button>
-
         <h1>Sign In with Mobile Device</h1>
         <p>Scan this QR code with your authenticated mobile device</p>
-
         {qrError ? (
           <ErrorAlert error={qrError} onRetry={generateQRCode} showRetry={true} />
         ) : qrCodeUrl ? (
@@ -321,14 +283,12 @@ export const SignIn: React.FC = () => {
         ) : (
           <div className="loading"></div>
         )}
-        
         <p style={{ fontSize: '14px', color: '#666', textAlign: 'center', marginTop: '20px' }}>
           Make sure you're already signed in on your mobile device
         </p>
       </div>
     );
   }
-
   // Email & Password Login
   return (
     <div className="auth-container">
@@ -338,12 +298,9 @@ export const SignIn: React.FC = () => {
       >
         ← Back
       </button>
-
       <h1>Sign In</h1>
       <p>Enter your email and password</p>
-
       <ErrorAlert error={error} />
-
       {needsEmailVerification && (
         <div className="warning-alert">
           <p>Your email address needs to be verified.</p>
@@ -356,7 +313,6 @@ export const SignIn: React.FC = () => {
           </button>
         </div>
       )}
-
       <form onSubmit={handleEmailLogin}>
         <div className="form-group">
           <label htmlFor="email">Email Address</label>
@@ -370,7 +326,6 @@ export const SignIn: React.FC = () => {
             disabled={showTOTP}
           />
         </div>
-
         <div className="form-group">
           <label htmlFor="password">Password</label>
           <div className="password-input">
@@ -392,7 +347,6 @@ export const SignIn: React.FC = () => {
             </button>
           </div>
         </div>
-
         {showTOTP && (
           <div className="form-group">
             <label htmlFor="totpCode">
@@ -428,7 +382,6 @@ export const SignIn: React.FC = () => {
             </button>
           </div>
         )}
-
         <button 
           type="submit"
           className="btn" 
@@ -437,22 +390,18 @@ export const SignIn: React.FC = () => {
           {loading ? <span className="loading"></span> : (showTOTP ? 'Verify & Sign In' : 'Sign In')}
         </button>
       </form>
-
       <div className="links-section">
         <Link to="/forgot-password" className="link">Forgot password?</Link>
       </div>
-
       <div className="divider">
         <span>or</span>
       </div>
-
       <button 
         className="secondary-btn"
         onClick={() => setLoginMethod('passkey')}
       >
         Sign in with Passkey
       </button>
-
       <div className="text-center mt-3">
         Don't have an account? <Link to="/signup" className="link">Create Account</Link>
       </div>

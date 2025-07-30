@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-
 export const DeviceCheck: React.FC = () => {
   const [checks, setChecks] = useState({
     webauthn: false,
@@ -7,14 +6,11 @@ export const DeviceCheck: React.FC = () => {
     secureContext: false,
     userVerification: false
   });
-
   useEffect(() => {
     // Check WebAuthn support
     const webauthnSupported = !!window.PublicKeyCredential;
-    
     // Check secure context (HTTPS)
     const isSecureContext = window.isSecureContext;
-    
     // Check platform authenticator
     const checkPlatform = async () => {
       if (webauthnSupported) {
@@ -26,21 +22,16 @@ export const DeviceCheck: React.FC = () => {
         }
       }
     };
-
     setChecks({
       webauthn: webauthnSupported,
       secureContext: isSecureContext,
       platform: false,
       userVerification: webauthnSupported
     });
-
     checkPlatform();
   }, []);
-
   const allChecksPass = Object.values(checks).every(check => check);
-
   if (allChecksPass) return null;
-
   return (
     <div className="device-check-alert">
       <h3>Device Compatibility Check</h3>
@@ -58,7 +49,6 @@ export const DeviceCheck: React.FC = () => {
           {!checks.platform && <span className="check-hint">Enable biometrics/PIN</span>}
         </li>
       </ul>
-      
       {!allChecksPass && (
         <div className="check-help">
           <p>To use passkeys, please ensure:</p>

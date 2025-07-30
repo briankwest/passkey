@@ -4,7 +4,6 @@ import { useAuth } from '../hooks/useAuth';
 import userService from '../services/user.service';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { getErrorMessage } from '../utils/errorMessages';
-
 export const Profile: React.FC = () => {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
@@ -12,27 +11,23 @@ export const Profile: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
   const [formData, setFormData] = useState({
     username: user?.username || '',
     email: user?.email || '',
     display_name: user?.display_name || '',
     bio: user?.bio || ''
   });
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
-    
     try {
       await userService.updateProfile(formData);
       await refreshUser();
@@ -44,7 +39,6 @@ export const Profile: React.FC = () => {
       setLoading(false);
     }
   };
-
   const handleLogout = async () => {
     try {
       await logout();
@@ -52,14 +46,11 @@ export const Profile: React.FC = () => {
       console.error('Logout failed:', err);
     }
   };
-
   const getInitials = () => {
     const name = user?.display_name || user?.username || 'U';
     return name.charAt(0).toUpperCase();
   };
-
   if (!user) return null;
-
   return (
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -68,7 +59,6 @@ export const Profile: React.FC = () => {
           Sign Out
         </button>
       </div>
-      
       <div className="profile-header">
         <div className="avatar">
           {getInitials()}
@@ -80,29 +70,24 @@ export const Profile: React.FC = () => {
           </p>
         </div>
       </div>
-      
       {!editing ? (
         <div style={{ background: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)' }}>
           <div className="form-group">
             <label>Username</label>
             <p>{user.username || 'Not set'}</p>
           </div>
-          
           <div className="form-group">
             <label>Email</label>
             <p>{user.email || 'Not set'}</p>
           </div>
-          
           <div className="form-group">
             <label>Display Name</label>
             <p>{user.display_name || 'Not set'}</p>
           </div>
-          
           <div className="form-group">
             <label>Bio</label>
             <p>{user.bio || 'Not set'}</p>
           </div>
-          
           <div style={{ display: 'flex', gap: '10px' }}>
             <button className="btn" onClick={() => setEditing(true)}>
               Edit Profile
@@ -124,7 +109,6 @@ export const Profile: React.FC = () => {
             showRetry={!loading}
           />
           {success && <div className="success-message">{success}</div>}
-          
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
@@ -136,7 +120,6 @@ export const Profile: React.FC = () => {
               placeholder="Choose a unique username"
             />
           </div>
-          
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -148,7 +131,6 @@ export const Profile: React.FC = () => {
               placeholder="your@email.com"
             />
           </div>
-          
           <div className="form-group">
             <label htmlFor="display_name">Display Name</label>
             <input
@@ -160,7 +142,6 @@ export const Profile: React.FC = () => {
               placeholder="How should we address you?"
             />
           </div>
-          
           <div className="form-group">
             <label htmlFor="bio">Bio</label>
             <textarea
@@ -172,7 +153,6 @@ export const Profile: React.FC = () => {
               placeholder="Tell us about yourself..."
             />
           </div>
-          
           <div style={{ display: 'flex', gap: '10px' }}>
             <button type="submit" className="btn" disabled={loading}>
               {loading ? <span className="loading"></span> : 'Save Changes'}

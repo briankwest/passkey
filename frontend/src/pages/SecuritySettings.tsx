@@ -2,63 +2,52 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { startRegistration } from '@simplewebauthn/browser';
 import { ErrorAlert } from '../components/ErrorAlert';
-
 interface Passkey {
     id: string;
     device_name: string;
     created_at: string;
     last_used_at: string;
 }
-
 interface TOTPStatus {
     enabled: boolean;
     created_at?: string;
 }
-
 interface BackupCode {
     code: string;
     used: boolean;
 }
-
 interface AuthMethod {
     method: string;
     timestamp: string;
     ip_address?: string;
     user_agent?: string;
 }
-
 const SecuritySettings: React.FC = () => {
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
-    
     // Security data
     const [passkeys, setPasskeys] = useState<Passkey[]>([]);
     const [totpStatus, setTotpStatus] = useState<TOTPStatus>({ enabled: false });
     const [backupCodes, setBackupCodes] = useState<{ codes: BackupCode[], hasUnusedCodes: boolean }>({ codes: [], hasUnusedCodes: false });
     const [recentActivity, setRecentActivity] = useState<AuthMethod[]>([]);
     const [hasPassword, setHasPassword] = useState(true); // Default to true until we check
-    
     // Modal states
     const [showAddPasskey, setShowAddPasskey] = useState(false);
     const [showTOTPSetup, setShowTOTPSetup] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [deviceName, setDeviceName] = useState('');
-    
     // TOTP setup data
     const [totpSetupData, setTotpSetupData] = useState<any>(null);
     const [totpCode, setTotpCode] = useState('');
-    
     // Password change
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordStrength, setPasswordStrength] = useState<any>(null);
-
     useEffect(() => {
         const abortController = new AbortController();
-        
         const loadData = async () => {
             try {
                 setLoading(true);
@@ -77,14 +66,11 @@ const SecuritySettings: React.FC = () => {
                 setLoading(false);
             }
         };
-        
         loadData();
-        
         return () => {
             abortController.abort();
         };
     }, []);
-
     useEffect(() => {
         if (newPassword) {
             checkPasswordStrength(newPassword);
@@ -92,7 +78,6 @@ const SecuritySettings: React.FC = () => {
             setPasswordStrength(null);
         }
     }, [newPassword]);
-
     const loadSecurityData = async () => {
         const abortController = new AbortController();
         try {
@@ -110,7 +95,6 @@ const SecuritySettings: React.FC = () => {
             setLoading(false);
         }
     };
-
     const loadUserProfile = async (signal?: AbortSignal) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
@@ -119,11 +103,9 @@ const SecuritySettings: React.FC = () => {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
-
             if (!response.ok) {
                 throw new Error('Failed to load user profile');
             }
-
             const data = await response.json();
             setHasPassword(data.has_password);
         } catch (err: any) {
@@ -132,7 +114,6 @@ const SecuritySettings: React.FC = () => {
             }
         }
     };
-
     const loadPasskeys = async (signal?: AbortSignal) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/passkeys`, {
@@ -143,7 +124,6 @@ const SecuritySettings: React.FC = () => {
             });
             if (response.ok) {
                 const data = await response.json();
-                console.log('Loaded passkeys:', data);
                 setPasskeys(data);
             } else {
                 console.error('Failed to load passkeys:', response.status, await response.text());
@@ -152,7 +132,6 @@ const SecuritySettings: React.FC = () => {
             console.error('Failed to load passkeys:', err);
         }
     };
-
     const loadTOTPStatus = async (signal?: AbortSignal) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/totp/status`, {
@@ -169,7 +148,6 @@ const SecuritySettings: React.FC = () => {
             console.error('Failed to load TOTP status:', err);
         }
     };
-
     const loadBackupCodes = async (signal?: AbortSignal) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/backup-codes`, {
@@ -186,7 +164,6 @@ const SecuritySettings: React.FC = () => {
             console.error('Failed to load backup codes:', err);
         }
     };
-
     const loadRecentActivity = async (signal?: AbortSignal) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/recent-activity`, {
@@ -203,11 +180,9 @@ const SecuritySettings: React.FC = () => {
             console.error('Failed to load recent activity:', err);
         }
     };
-
     const handleAddPasskey = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        
         try {
             // Start registration
             const optionsResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/passkey/add/options`, {
@@ -218,16 +193,12 @@ const SecuritySettings: React.FC = () => {
                 },
                 body: JSON.stringify({ deviceName })
             });
-
             if (!optionsResponse.ok) {
                 throw new Error('Failed to start passkey registration');
             }
-
             const options = await optionsResponse.json();
-
             // Create credential using SimpleWebAuthn
             const credential = await startRegistration(options);
-
             // Complete registration
             const completeResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/passkey/add/verify`, {
                 method: 'POST',
@@ -240,11 +211,9 @@ const SecuritySettings: React.FC = () => {
                     deviceName: deviceName || 'Security Key'
                 })
             });
-
             if (!completeResponse.ok) {
                 throw new Error('Failed to complete passkey registration');
             }
-
             setSuccess('Passkey added successfully');
             setShowAddPasskey(false);
             setDeviceName('');
@@ -253,12 +222,10 @@ const SecuritySettings: React.FC = () => {
             setError(err.message || 'Failed to add passkey');
         }
     };
-
     const handleDeletePasskey = async (passkeyId: string) => {
         if (!confirm('Are you sure you want to remove this passkey?')) {
             return;
         }
-
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/passkeys/${passkeyId}`, {
                 method: 'DELETE',
@@ -266,18 +233,15 @@ const SecuritySettings: React.FC = () => {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
-
             if (!response.ok) {
                 throw new Error('Failed to delete passkey');
             }
-
             setSuccess('Passkey removed successfully');
             await loadPasskeys();
         } catch (err) {
             setError('Failed to remove passkey');
         }
     };
-
     const handleSetupTOTP = async () => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/totp/setup`, {
@@ -286,9 +250,7 @@ const SecuritySettings: React.FC = () => {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
-
             if (!response.ok) throw new Error('Failed to setup TOTP');
-
             const setup = await response.json();
             setTotpSetupData(setup);
             setShowTOTPSetup(true);
@@ -296,10 +258,8 @@ const SecuritySettings: React.FC = () => {
             setError('Failed to setup two-factor authentication');
         }
     };
-
     const handleVerifyTOTP = async (e: React.FormEvent) => {
         e.preventDefault();
-        
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/totp/verify-setup`, {
                 method: 'POST',
@@ -309,11 +269,9 @@ const SecuritySettings: React.FC = () => {
                 },
                 body: JSON.stringify({ token: totpCode })
             });
-
             if (!response.ok) {
                 throw new Error('Invalid verification code');
             }
-
             setSuccess('Two-factor authentication enabled successfully');
             setShowTOTPSetup(false);
             setTotpCode('');
@@ -324,12 +282,10 @@ const SecuritySettings: React.FC = () => {
             setError('Invalid verification code. Please try again.');
         }
     };
-
     const handleDisableTOTP = async () => {
         if (!confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.')) {
             return;
         }
-
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/totp`, {
                 method: 'DELETE',
@@ -337,11 +293,9 @@ const SecuritySettings: React.FC = () => {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
-
             if (!response.ok) {
                 throw new Error('Failed to disable TOTP');
             }
-
             setSuccess('Two-factor authentication disabled');
             await loadTOTPStatus();
             await loadBackupCodes();
@@ -349,16 +303,13 @@ const SecuritySettings: React.FC = () => {
             setError('Failed to disable two-factor authentication');
         }
     };
-
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-
         if (newPassword !== confirmPassword) {
             setError('New passwords do not match');
             return;
         }
-
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/change-password`, {
                 method: 'POST',
@@ -371,12 +322,10 @@ const SecuritySettings: React.FC = () => {
                     newPassword
                 })
             });
-
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.message || 'Failed to change password');
             }
-
             setSuccess(hasPassword ? 'Password changed successfully' : 'Password created successfully');
             setHasPassword(true); // Update state after creating password
             setShowChangePassword(false);
@@ -387,7 +336,6 @@ const SecuritySettings: React.FC = () => {
             setError(err.message || 'Failed to change password');
         }
     };
-
     const checkPasswordStrength = async (password: string) => {
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/check-password-strength`, {
@@ -397,7 +345,6 @@ const SecuritySettings: React.FC = () => {
                 },
                 body: JSON.stringify({ password })
             });
-
             if (response.ok) {
                 const result = await response.json();
                 setPasswordStrength(result);
@@ -406,16 +353,12 @@ const SecuritySettings: React.FC = () => {
             console.error('Failed to check password strength:', err);
         }
     };
-
     const downloadBackupCodes = (codes: string[]) => {
         const content = `Backup Codes for Passkey Demo
 Generated: ${new Date().toISOString()}
-
 ${codes.join('\n')}
-
 Each code can only be used once.
 Store these codes in a secure location.`;
-
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -424,7 +367,6 @@ Store these codes in a secure location.`;
         a.click();
         URL.revokeObjectURL(url);
     };
-
     const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
         const binaryString = atob(base64);
         const bytes = new Uint8Array(binaryString.length);
@@ -433,7 +375,6 @@ Store these codes in a secure location.`;
         }
         return bytes.buffer;
     };
-
     const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
         const bytes = new Uint8Array(buffer);
         let binary = '';
@@ -442,7 +383,6 @@ Store these codes in a secure location.`;
         }
         return btoa(binary);
     };
-
     const getMethodIcon = (method: string): string => {
         const icons: Record<string, string> = {
             'passkey': '🔑',
@@ -452,20 +392,16 @@ Store these codes in a secure location.`;
         };
         return icons[method] || '🔐';
     };
-
     const getPasswordStrengthClass = (score: number): string => {
         return ['weak', 'fair', 'good', 'strong'][score] || 'weak';
     };
-
     if (loading) {
         return <div className="container">Loading security settings...</div>;
     }
-
     return (
         <div className="container">
             <div className="auth-container" style={{ maxWidth: '800px' }}>
                 <h1>Security Settings</h1>
-                
                 {error && <ErrorAlert error={error} />}
                 {success && (
                     <div className="success-alert">
@@ -473,14 +409,12 @@ Store these codes in a secure location.`;
                         <button onClick={() => setSuccess(null)}>&times;</button>
                     </div>
                 )}
-
                 {/* Passkeys Section */}
                 <div className="security-section">
                     <h2>Passkeys</h2>
                     <p className="section-description">
                         Passkeys provide passwordless authentication using biometrics or security keys.
                     </p>
-                    
                     {passkeys.length === 0 ? (
                         <p className="empty-state">No passkeys registered yet.</p>
                     ) : (
@@ -504,19 +438,16 @@ Store these codes in a secure location.`;
                             ))}
                         </div>
                     )}
-                    
                     <button className="primary-btn" onClick={() => setShowAddPasskey(true)}>
                         Add New Passkey
                     </button>
                 </div>
-
                 {/* Two-Factor Authentication Section */}
                 <div className="security-section">
                     <h2>Two-Factor Authentication (2FA)</h2>
                     <p className="section-description">
                         Add an extra layer of security with TOTP authentication.
                     </p>
-                    
                     {totpStatus.enabled ? (
                         <div className="totp-enabled">
                             <span className="status-badge enabled">Enabled</span>
@@ -535,7 +466,6 @@ Store these codes in a secure location.`;
                         </div>
                     )}
                 </div>
-
                 {/* Backup Codes Section */}
                 {backupCodes.codes.length > 0 && (
                     <div className="security-section">
@@ -543,13 +473,11 @@ Store these codes in a secure location.`;
                         <p className="section-description">
                             Use these codes to access your account if you lose access to your other authentication methods.
                         </p>
-                        
                         <div className="backup-codes-info">
                             <p>{backupCodes.codes.filter(c => !c.used).length} of {backupCodes.codes.length} codes remaining</p>
                             {backupCodes.codes.filter(c => !c.used).length < 3 && (
                                 <p className="warning">Warning: You have few backup codes left. Consider regenerating them.</p>
                             )}
-                            
                             <div className="codes-list">
                                 {backupCodes.codes.map((code, index) => (
                                     <div key={index} className={`backup-code-item ${code.used ? 'used' : ''}`}>
@@ -558,7 +486,6 @@ Store these codes in a secure location.`;
                                     </div>
                                 ))}
                             </div>
-                            
                             <button 
                                 className="secondary-btn" 
                                 onClick={async () => {
@@ -595,7 +522,6 @@ Store these codes in a secure location.`;
                         </div>
                     </div>
                 )}
-
                 {/* Password Section */}
                 <div className="security-section">
                     <h2>Password</h2>
@@ -604,7 +530,6 @@ Store these codes in a secure location.`;
                         {hasPassword ? 'Change Password' : 'Create Password'}
                     </button>
                 </div>
-
                 {/* Recent Activity */}
                 <div className="security-section">
                     <h2>Recent Security Activity</h2>
@@ -626,12 +551,10 @@ Store these codes in a secure location.`;
                         </div>
                     )}
                 </div>
-
                 <button className="logout-btn" onClick={() => navigate('/profile')}>
                     Back to Profile
                 </button>
             </div>
-
             {/* Add Passkey Modal */}
             {showAddPasskey && (
                 <div className="modal">
@@ -655,7 +578,6 @@ Store these codes in a secure location.`;
                     </div>
                 </div>
             )}
-
             {/* TOTP Setup Modal */}
             {showTOTPSetup && totpSetupData && (
                 <div className="modal">
@@ -666,22 +588,18 @@ Store these codes in a secure location.`;
                             setTotpCode('');
                         }}>&times;</span>
                         <h2>Setup Two-Factor Authentication</h2>
-                        
                         <div className="totp-setup">
                             <ol>
                                 <li>Install an authenticator app like Google Authenticator or Authy</li>
                                 <li>Scan this QR code or enter the manual code</li>
                             </ol>
-                            
                             <div className="qr-code">
                                 <img src={totpSetupData.qrCode} alt="TOTP QR Code" />
                             </div>
-                            
                             <div className="manual-entry">
                                 <p>Manual entry code:</p>
                                 <code className="secret-code">{totpSetupData.secret}</code>
                             </div>
-                            
                             <form onSubmit={handleVerifyTOTP}>
                                 <div className="form-group">
                                     <label htmlFor="totpCode">Enter verification code from your app</label>
@@ -698,7 +616,6 @@ Store these codes in a secure location.`;
                                 </div>
                                 <button type="submit" className="primary-btn">Verify and Enable</button>
                             </form>
-                            
                             {totpSetupData.backupCodes && (
                                 <div className="backup-codes-preview">
                                     <h3>Save Your Backup Codes</h3>
@@ -720,7 +637,6 @@ Store these codes in a secure location.`;
                     </div>
                 </div>
             )}
-
             {/* Change Password Modal */}
             {showChangePassword && (
                 <div className="modal">
@@ -732,7 +648,6 @@ Store these codes in a secure location.`;
                             setConfirmPassword('');
                         }}>&times;</span>
                         <h2>{hasPassword ? 'Change Password' : 'Create Password'}</h2>
-                        
                         <form onSubmit={handleChangePassword}>
                             {hasPassword && (
                                 <div className="form-group">
@@ -746,7 +661,6 @@ Store these codes in a secure location.`;
                                     />
                                 </div>
                             )}
-                            
                             <div className="form-group">
                                 <label htmlFor="newPassword">New Password</label>
                                 <input
@@ -770,7 +684,6 @@ Store these codes in a secure location.`;
                                     </div>
                                 )}
                             </div>
-                            
                             <div className="form-group">
                                 <label htmlFor="confirmPassword">Confirm New Password</label>
                                 <input
@@ -781,7 +694,6 @@ Store these codes in a secure location.`;
                                     required
                                 />
                             </div>
-                            
                             <button type="submit" className="primary-btn">Update Password</button>
                         </form>
                     </div>
@@ -790,5 +702,4 @@ Store these codes in a secure location.`;
         </div>
     );
 };
-
 export default SecuritySettings;

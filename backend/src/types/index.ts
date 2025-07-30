@@ -13,7 +13,6 @@ export interface User {
   created_at: Date;
   updated_at: Date;
 }
-
 export interface Passkey {
   id: string;
   user_id: string;
@@ -28,7 +27,6 @@ export interface Passkey {
   credential_device_type?: string;
   credential_backed_up: boolean;
 }
-
 export interface AuthChallenge {
   challenge: string;
   user_id?: string;

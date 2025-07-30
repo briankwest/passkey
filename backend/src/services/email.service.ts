@@ -2,25 +2,21 @@ import Mailgun from 'mailgun.js';
 import formData from 'form-data';
 import { config } from '../config';
 import { query } from '../db';
-
 interface EmailConfig {
   apiKey: string;
   domain: string;
   from: string;
   fromName: string;
 }
-
 interface EmailUser {
   id: string;
   email: string;
   firstName?: string;
   lastName?: string;
 }
-
 export class EmailService {
   private mailgun: any;
   private emailConfig: EmailConfig;
-
   constructor() {
     this.emailConfig = {
       apiKey: config.email.mailgunApiKey,
@@ -28,17 +24,14 @@ export class EmailService {
       from: config.email.fromEmail,
       fromName: config.email.fromName
     };
-
     const mailgun = new Mailgun(formData);
     this.mailgun = mailgun.client({
       username: 'api',
       key: this.emailConfig.apiKey
     });
   }
-
   async sendVerificationEmail(user: EmailUser, token: string): Promise<void> {
     const verificationUrl = `${config.app.url}/verify-email?token=${token}`;
-    
     const messageData = {
       from: `${this.emailConfig.fromName} <${this.emailConfig.from}>`,
       to: user.email,
@@ -46,10 +39,8 @@ export class EmailService {
       html: this.getVerificationEmailTemplate(user, verificationUrl),
       text: this.getVerificationEmailText(user, verificationUrl)
     };
-    
     try {
       const result = await this.mailgun.messages.create(this.emailConfig.domain, messageData);
-      
       // Log email send
       await this.logEmailSend({
         userId: user.id,
@@ -68,7 +59,6 @@ export class EmailService {
       throw error;
     }
   }
-
   async sendWelcomeEmail(user: EmailUser): Promise<void> {
     const messageData = {
       from: `${this.emailConfig.fromName} <${this.emailConfig.from}>`,
@@ -77,10 +67,8 @@ export class EmailService {
       html: this.getWelcomeEmailTemplate(user),
       text: this.getWelcomeEmailText(user)
     };
-
     try {
       const result = await this.mailgun.messages.create(this.emailConfig.domain, messageData);
-      
       await this.logEmailSend({
         userId: user.id,
         email: user.email,
@@ -89,10 +77,8 @@ export class EmailService {
         mailgunId: result.id
       });
     } catch (error) {
-      console.error('Failed to send welcome email:', error);
     }
   }
-
   async checkRateLimit(email: string, type: string): Promise<boolean> {
     const result = await query(
       `SELECT COUNT(*) as count FROM email_logs 
@@ -100,10 +86,8 @@ export class EmailService {
        AND sent_at > NOW() - INTERVAL '1 hour'`,
       [email, type]
     );
-    
     return parseInt(result.rows[0].count) < 3; // Max 3 per hour
   }
-
   private async logEmailSend(data: {
     userId: string;
     email: string;
@@ -117,14 +101,11 @@ export class EmailService {
       [data.userId, data.email, data.type, data.status, data.mailgunId]
     );
   }
-
   async sendPasswordResetEmail(user: EmailUser, resetToken: string): Promise<void> {
     const origin = config.webauthn.origin || 'http://localhost:3000';
     const resetUrl = `${origin}/reset-password?token=${resetToken}`;
-
     const html = this.getPasswordResetEmailTemplate(user, resetUrl);
     const text = this.getPasswordResetEmailText(user, resetUrl);
-
     const messageData = {
       from: `${this.emailConfig.fromName} <${this.emailConfig.from}>`,
       to: user.email,
@@ -132,10 +113,8 @@ export class EmailService {
       html,
       text
     };
-
     try {
       const result = await this.mailgun.messages.create(this.emailConfig.domain, messageData);
-
       await this.logEmailSend({
         userId: user.id,
         email: user.email,
@@ -143,22 +122,16 @@ export class EmailService {
         status: 'sent',
         mailgunId: result.id
       });
-
-      console.log('Password reset email sent successfully:', result.id);
     } catch (error: any) {
-      console.error('Failed to send password reset email:', error);
-
       await this.logEmailSend({
         userId: user.id,
         email: user.email,
         type: 'password_reset',
         status: 'failed'
       });
-
       throw new Error('Failed to send password reset email');
     }
   }
-
   private getPasswordResetEmailTemplate(user: EmailUser, resetUrl: string): string {
     return `
 <!DOCTYPE html>
@@ -202,7 +175,6 @@ export class EmailService {
 </html>
     `;
   }
-
   private getVerificationEmailTemplate(user: EmailUser, verificationUrl: string): string {
     return `
 <!DOCTYPE html>
@@ -237,16 +209,12 @@ export class EmailService {
     <div class="content">
       <h2>Hello${user.firstName ? ' ' + user.firstName : ''}!</h2>
       <p>Thanks for creating an account. Please verify your email address by clicking the button below:</p>
-      
       <div style="text-align: center;">
         <a href="${verificationUrl}" class="button">Verify Email Address</a>
       </div>
-      
       <p>Or copy and paste this link into your browser:</p>
       <div class="url-box">${verificationUrl}</div>
-      
       <p><strong>This link will expire in 24 hours.</strong></p>
-      
       <p>If you didn't create an account, you can safely ignore this email.</p>
     </div>
     <div class="footer">
@@ -258,24 +226,17 @@ export class EmailService {
 </html>
     `;
   }
-
   private getVerificationEmailText(user: EmailUser, verificationUrl: string): string {
     return `
 Hello${user.firstName ? ' ' + user.firstName : ''}!
-
 Thanks for creating an account with ${config.app.name}.
-
 Please verify your email address by visiting this link:
 ${verificationUrl}
-
 This link will expire in 24 hours.
-
 If you didn't create an account, you can safely ignore this email.
-
 © ${new Date().getFullYear()} ${config.app.name}. All rights reserved.
     `;
   }
-
   private getWelcomeEmailTemplate(user: EmailUser): string {
     return `
 <!DOCTYPE html>
@@ -310,22 +271,18 @@ If you didn't create an account, you can safely ignore this email.
     <div class="content">
       <h2>Hi${user.firstName ? ' ' + user.firstName : ''}!</h2>
       <p>Your account has been successfully verified. Here's what you can do next:</p>
-      
       <div class="feature">
         <h3>🔐 Add a Passkey</h3>
         <p>Enable passwordless login with your device's biometrics or security key.</p>
       </div>
-      
       <div class="feature">
         <h3>🛡️ Enable Two-Factor Authentication</h3>
         <p>Add an extra layer of security with TOTP authentication.</p>
       </div>
-      
       <div class="feature">
         <h3>👤 Complete Your Profile</h3>
         <p>Add your display name and other profile information.</p>
       </div>
-      
       <div style="text-align: center;">
         <a href="${config.app.url}/settings/security" class="button">Go to Security Settings</a>
       </div>
@@ -338,38 +295,26 @@ If you didn't create an account, you can safely ignore this email.
 </html>
     `;
   }
-
   private getWelcomeEmailText(user: EmailUser): string {
     return `
 Hi${user.firstName ? ' ' + user.firstName : ''}!
-
 Welcome to ${config.app.name}!
-
 Your account has been successfully verified. Here's what you can do next:
-
 • Add a Passkey - Enable passwordless login with your device's biometrics or security key
 • Enable Two-Factor Authentication - Add an extra layer of security
 • Complete Your Profile - Add your display name and other information
-
 Visit your security settings: ${config.app.url}/settings/security
-
 © ${new Date().getFullYear()} ${config.app.name}. All rights reserved.
     `;
   }
-
   private getPasswordResetEmailText(user: EmailUser, resetUrl: string): string {
     return `
 Hello${user.firstName ? ` ${user.firstName}` : ''},
-
 We received a request to reset your password for your Passkey Demo account.
-
 Click this link to reset your password:
 ${resetUrl}
-
 This link will expire in 1 hour for security reasons.
-
 If you didn't request a password reset, you can safely ignore this email.
-
 This is an automated message from Passkey Demo.
     `;
   }

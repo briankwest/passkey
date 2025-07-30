@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-
 export const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -10,15 +9,12 @@ export const ResetPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState<any>(null);
-
   const token = searchParams.get('token');
-
   useEffect(() => {
     if (!token) {
       setError('Invalid reset link');
     }
   }, [token]);
-
   useEffect(() => {
     if (password) {
       checkPasswordStrength(password);
@@ -26,7 +22,6 @@ export const ResetPassword: React.FC = () => {
       setPasswordStrength(null);
     }
   }, [password]);
-
   const checkPasswordStrength = async (pwd: string) => {
     try {
       const response = await api.post('/auth/check-password-strength', { password: pwd });
@@ -35,30 +30,24 @@ export const ResetPassword: React.FC = () => {
       console.error('Failed to check password strength:', err);
     }
   };
-
   const getPasswordStrengthClass = (score: number) => {
     if (score >= 4) return 'strong';
     if (score >= 3) return 'good';
     if (score >= 2) return 'fair';
     return 'weak';
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
     if (passwordStrength && !passwordStrength.valid) {
       setError('Please choose a stronger password');
       return;
     }
-
     setLoading(true);
     setError('');
-
     try {
       await api.post('/auth/reset-password', { token, password });
       alert('Password reset successfully! Please sign in with your new password.');
@@ -69,7 +58,6 @@ export const ResetPassword: React.FC = () => {
       setLoading(false);
     }
   };
-
   if (!token) {
     return (
       <div className="auth-container">
@@ -81,14 +69,11 @@ export const ResetPassword: React.FC = () => {
       </div>
     );
   }
-
   return (
     <div className="auth-container">
       <h1>Reset Password</h1>
       <p>Enter your new password below.</p>
-
       {error && <div className="error-message">{error}</div>}
-
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="password">New Password</label>
@@ -110,7 +95,6 @@ export const ResetPassword: React.FC = () => {
             </div>
           )}
         </div>
-
         <div className="form-group">
           <label htmlFor="confirmPassword">Confirm Password</label>
           <input
@@ -122,7 +106,6 @@ export const ResetPassword: React.FC = () => {
             placeholder="Confirm new password"
           />
         </div>
-
         <button type="submit" className="btn" disabled={loading || !passwordStrength?.valid}>
           {loading ? <span className="loading"></span> : 'Reset Password'}
         </button>
