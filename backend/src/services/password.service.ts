@@ -20,6 +20,13 @@ export class PasswordService {
   private readonly minLength = 12;
   private readonly maxLength = 128;
   private readonly minScore = 3; // zxcvbn score (0-4)
+  private readonly maxFailedAttempts = 5;
+  private readonly lockDurationMinutes = {
+    standard: 30,
+    extended: 60
+  };
+  private readonly historyLimit = 10;
+  private readonly historyCheckLimit = 5;
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, this.saltRounds);
   }
@@ -28,34 +35,57 @@ export class PasswordService {
   }
   validatePassword(password: string, userInputs: string[] = []): PasswordValidation {
     const errors: string[] = [];
-    // Check length
-    if (password.length < this.minLength) {
-      errors.push(`Password must be at least ${this.minLength} characters long`);
-    }
-    if (password.length > this.maxLength) {
-      errors.push(`Password must be no more than ${this.maxLength} characters long`);
-    }
-    // Check strength using zxcvbn
-    const result = zxcvbn(password, userInputs);
-    const strength: PasswordStrength = {
-      score: result.score,
-      feedback: result.feedback,
-      crackTime: String(result.crack_times_display.offline_slow_hashing_1e4_per_second),
-      isAcceptable: result.score >= this.minScore && password.length >= this.minLength
-    };
-    if (result.score < this.minScore) {
-      errors.push('Password is too weak. Try a longer phrase or add more unique words');
-      if (result.feedback.warning) {
-        errors.push(result.feedback.warning);
-      }
-    }
+    
+    // Validate length
+    const lengthErrors = this.validateLength(password);
+    errors.push(...lengthErrors);
+    
+    // Check strength
+    const strength = this.analyzeStrength(password, userInputs);
+    
+    // Add strength-based errors
+    const strengthErrors = this.getStrengthErrors(strength);
+    errors.push(...strengthErrors);
+    
     return {
       isValid: errors.length === 0,
       errors,
       strength
     };
   }
-  async checkPasswordHistory(userId: string, password: string, limit: number = 5): Promise<boolean> {
+  
+  private validateLength(password: string): string[] {
+    const errors: string[] = [];
+    if (password.length < this.minLength) {
+      errors.push(`Password must be at least ${this.minLength} characters long`);
+    }
+    if (password.length > this.maxLength) {
+      errors.push(`Password must be no more than ${this.maxLength} characters long`);
+    }
+    return errors;
+  }
+  
+  private analyzeStrength(password: string, userInputs: string[] = []): PasswordStrength {
+    const result = zxcvbn(password, userInputs);
+    return {
+      score: result.score,
+      feedback: result.feedback,
+      crackTime: String(result.crack_times_display.offline_slow_hashing_1e4_per_second),
+      isAcceptable: result.score >= this.minScore && password.length >= this.minLength
+    };
+  }
+  
+  private getStrengthErrors(strength: PasswordStrength): string[] {
+    const errors: string[] = [];
+    if (strength.score < this.minScore) {
+      errors.push('Password is too weak. Try a longer phrase or add more unique words');
+      if (strength.feedback.warning) {
+        errors.push(strength.feedback.warning);
+      }
+    }
+    return errors;
+  }
+  async checkPasswordHistory(userId: string, password: string, limit: number = this.historyCheckLimit): Promise<boolean> {
     const result = await query(
       `SELECT password_hash FROM password_history 
        WHERE user_id = $1 
@@ -71,11 +101,21 @@ export class PasswordService {
     return true; // Password not found in history
   }
   async savePasswordToHistory(userId: string, passwordHash: string): Promise<void> {
+    // Add new password to history
+    await this.addToHistory(userId, passwordHash);
+    
+    // Clean up old entries
+    await this.cleanupPasswordHistory(userId);
+  }
+  
+  private async addToHistory(userId: string, passwordHash: string): Promise<void> {
     await query(
       `INSERT INTO password_history (user_id, password_hash) VALUES ($1, $2)`,
       [userId, passwordHash]
     );
-    // Clean up old password history (keep last 10)
+  }
+  
+  private async cleanupPasswordHistory(userId: string): Promise<void> {
     await query(
       `DELETE FROM password_history 
        WHERE user_id = $1 
@@ -83,9 +123,9 @@ export class PasswordService {
          SELECT id FROM password_history 
          WHERE user_id = $1 
          ORDER BY created_at DESC 
-         LIMIT 10
+         LIMIT $2
        )`,
-      [userId]
+      [userId, this.historyLimit]
     );
   }
   generatePasswordSuggestions(): string[] {
@@ -147,6 +187,14 @@ export class PasswordService {
     return { isLocked: false };
   }
   async recordFailedLogin(email: string): Promise<void> {
+    const attempts = await this.incrementFailedAttempts(email);
+    
+    if (attempts >= this.maxFailedAttempts) {
+      await this.lockAccount(email, attempts);
+    }
+  }
+  
+  private async incrementFailedAttempts(email: string): Promise<number> {
     const result = await query(
       `UPDATE users 
        SET failed_login_attempts = failed_login_attempts + 1
@@ -154,19 +202,22 @@ export class PasswordService {
        RETURNING failed_login_attempts`,
       [email]
     );
-    if (result.rows.length > 0) {
-      const attempts = result.rows[0].failed_login_attempts;
-      // Lock account after 5 failed attempts
-      if (attempts >= 5) {
-        const lockDuration = attempts >= 10 ? 60 : 30; // 30 or 60 minutes
-        await query(
-          `UPDATE users 
-           SET locked_until = NOW() + INTERVAL '${lockDuration} minutes'
-           WHERE email = $1`,
-          [email]
-        );
-      }
-    }
+    
+    return result.rows.length > 0 ? result.rows[0].failed_login_attempts : 0;
+  }
+  
+  private async lockAccount(email: string, attempts: number): Promise<void> {
+    const lockDuration = this.calculateLockDuration(attempts);
+    await query(
+      `UPDATE users 
+       SET locked_until = NOW() + INTERVAL '${lockDuration} minutes'
+       WHERE email = $1`,
+      [email]
+    );
+  }
+  
+  private calculateLockDuration(attempts: number): number {
+    return attempts >= 10 ? this.lockDurationMinutes.extended : this.lockDurationMinutes.standard;
   }
   async clearFailedLoginAttempts(email: string): Promise<void> {
     await query(
