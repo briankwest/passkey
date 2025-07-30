@@ -7,6 +7,7 @@ import { TOTPService } from '../services/totp.service';
 import { CrossDeviceService } from '../services/crossDevice.service';
 import { challengeService } from '../services/challenge.service';
 import { generateAuthToken } from '../utils/jwt';
+import { getClientIp } from '../utils/getClientIp';
 import { config } from '../config';
 import crypto from 'crypto';
 import { query } from '../db';
@@ -186,7 +187,7 @@ export class AuthController {
         }
         // Save credential with device info
         const userAgent = req.get('user-agent') || '';
-        const ipAddress = req.ip;
+        const ipAddress = getClientIp(req);
         await webauthnService.saveCredential(
           userId,
           verification.registrationInfo.credentialID,
@@ -266,7 +267,7 @@ export class AuthController {
           user.id, 
           'passkey', 
           true,
-          req.ip,
+          getClientIp(req),
           req.get('user-agent')
         );
         // Passkey is already multi-factor authentication (possession + biometrics)
@@ -288,7 +289,7 @@ export class AuthController {
           '', 
           'passkey', 
           false,
-          req.ip,
+          getClientIp(req),
           req.get('user-agent')
         );
         res.status(400).json({ 
@@ -334,7 +335,7 @@ export class AuthController {
       const validPassword = await passwordService.verifyPassword(password, user.password_hash);
       if (!validPassword) {
         await passwordService.recordFailedLogin(email);
-        await userService.trackAuthMethod(user.id, 'password', false, req.ip, req.get('user-agent'));
+        await userService.trackAuthMethod(user.id, 'password', false, getClientIp(req), req.get('user-agent'));
         return res.status(401).json({ error: 'Invalid email or password' });
       }
       // Clear failed attempts
@@ -348,7 +349,7 @@ export class AuthController {
         });
       }
       // Track successful password auth
-      await userService.trackAuthMethod(user.id, 'password', true, req.ip, req.get('user-agent'));
+      await userService.trackAuthMethod(user.id, 'password', true, getClientIp(req), req.get('user-agent'));
       // Check if TOTP is required
       const hasTOTP = await totpService.hasTOTP(user.id);
       if (hasTOTP) {
@@ -366,11 +367,11 @@ export class AuthController {
             validAuth = await totpService.verifyTOTP(user.id, totpCode);
           }
           if (!validAuth) {
-            await userService.trackAuthMethod(user.id, authMethod, false, req.ip, req.get('user-agent'));
+            await userService.trackAuthMethod(user.id, authMethod, false, getClientIp(req), req.get('user-agent'));
             return res.status(401).json({ error: 'Invalid 2FA code' });
           }
           // Auth verified, continue with login
-          await userService.trackAuthMethod(user.id, authMethod, true, req.ip, req.get('user-agent'));
+          await userService.trackAuthMethod(user.id, authMethod, true, getClientIp(req), req.get('user-agent'));
         } else {
           // No TOTP code provided, request it
           req.session.pendingUserId = user.id;
@@ -618,12 +619,12 @@ export class AuthController {
         // Try backup code
         const backupVerified = await totpService.verifyBackupCode(userId, token);
         if (!backupVerified) {
-          await userService.trackAuthMethod(userId, 'totp', false, req.ip, req.get('user-agent'));
+          await userService.trackAuthMethod(userId, 'totp', false, getClientIp(req), req.get('user-agent'));
           return res.status(400).json({ error: 'Invalid verification code' });
         }
-        await userService.trackAuthMethod(userId, 'backup_code', true, req.ip, req.get('user-agent'));
+        await userService.trackAuthMethod(userId, 'backup_code', true, getClientIp(req), req.get('user-agent'));
       } else {
-        await userService.trackAuthMethod(userId, 'totp', true, req.ip, req.get('user-agent'));
+        await userService.trackAuthMethod(userId, 'totp', true, getClientIp(req), req.get('user-agent'));
       }
       // Clear session
       delete req.session.pendingUserId;
@@ -894,7 +895,7 @@ export class AuthController {
         [token]
       );
       // Track password change
-      await userService.trackAuthMethod(userId, 'password_reset', true, req.ip, req.get('user-agent'));
+      await userService.trackAuthMethod(userId, 'password_reset', true, getClientIp(req), req.get('user-agent'));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: 'Failed to reset password' });
