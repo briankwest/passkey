@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 -- Track authentication methods for security
 CREATE TABLE IF NOT EXISTS auth_methods (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     method VARCHAR(50) NOT NULL, -- 'passkey', 'password', 'totp', 'backup_code'
     success BOOLEAN NOT NULL,
     ip_address INET,
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS auth_methods (
 -- Email logs for tracking and rate limiting
 CREATE TABLE IF NOT EXISTS email_logs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES users(id),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL, -- 'verification', 'password_reset', 'login_alert'
     status VARCHAR(50) NOT NULL, -- 'sent', 'failed', 'bounced'
