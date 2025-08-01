@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getCsrfToken } from '../hooks/useCsrfToken';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -10,12 +11,21 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Add token to requests
+// Add token and CSRF token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Add CSRF token for state-changing requests
+  if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase() || '')) {
+    const csrfToken = getCsrfToken();
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
+  }
+  
   return config;
 });
 

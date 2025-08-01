@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useAsyncState } from '../hooks';
+import { useCsrfToken } from '../hooks/useCsrfToken';
 import userService from '../services/user.service';
 import { ErrorAlert } from '../components/ErrorAlert';
 
@@ -12,6 +13,9 @@ export const Profile: React.FC = () => {
   
   // Use our custom hook for async state management
   const { loading, error, execute, clearError } = useAsyncState();
+  
+  // Ensure CSRF token is loaded
+  useCsrfToken();
   
   const [formData, setFormData] = useState({
     username: user?.username || '',
